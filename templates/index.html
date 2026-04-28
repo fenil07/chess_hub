@@ -1,0 +1,419 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chess Hub – Chess</title>
+    <meta name="description" content="Chess Hub Chess – Play against neural network AI, solve puzzles, analyse games, and scout openings">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+    <style>
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+        :root {
+            --bg:       #0f0f0f;
+            --surface:  #181818;
+            --border:   #2c2c2c;
+            --gold:     #c9a84c;
+            --gold-dim: #7a6228;
+            --text:     #e8e8e8;
+            --muted:    #888;
+        }
+        html, body { height: 100%; background: var(--bg); color: var(--text); font-family: 'DM Sans', sans-serif; }
+
+        body::before {
+            content: '';
+            position: fixed; inset: 0;
+            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
+            pointer-events: none; z-index: 0;
+        }
+        body::after {
+            content: ''; position: fixed; top:-30%; left:50%; transform:translateX(-50%);
+            width:700px; height:500px;
+            background: radial-gradient(ellipse, rgba(201,168,76,0.06) 0%, transparent 70%);
+            pointer-events: none; z-index: 0;
+        }
+
+        .page {
+            position: relative; z-index: 1; min-height: 100vh;
+            display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 40px 20px;
+        }
+
+        header { text-align: center; margin-bottom: 52px; }
+        .logo-mark {
+            display: inline-block; width: 56px; height: 56px; margin-bottom: 18px; opacity: 0.9;
+            animation: pulse 4s ease-in-out infinite;
+        }
+        @keyframes pulse { 0%,100%{opacity:.9;transform:scale(1)} 50%{opacity:1;transform:scale(1.04)} }
+        header h1 {
+            font-family: 'Cinzel', serif; font-size: clamp(28px,4vw,44px);
+            font-weight: 700; letter-spacing: 4px; color: var(--gold);
+            text-shadow: 0 0 40px rgba(201,168,76,0.25);
+        }
+        header p { margin-top: 10px; color: var(--muted); font-size: 15px; letter-spacing: 1px; font-weight: 300; }
+
+        /* ── Section labels ── */
+        .section-label {
+            width: 100%; max-width: 860px;
+            font-family: 'Cinzel', serif; font-size: 10px; letter-spacing: 3px;
+            text-transform: uppercase; color: var(--muted);
+            margin-bottom: 14px; margin-top: 32px;
+            border-left: 2px solid var(--gold-dim); padding-left: 10px;
+        }
+        .section-label:first-of-type { margin-top: 0; }
+
+        /* ── Card grid (Changed to 2 columns universally for a 6 card layout) ── */
+        .grid-2 {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 16px;
+            width: 100%; max-width: 860px;
+        }
+
+
+        .card {
+            position: relative; background: var(--surface); border: 1px solid var(--border);
+            border-radius: 14px; padding: 28px 22px 24px; cursor: pointer;
+            transition: border-color .25s, transform .2s, box-shadow .25s;
+            text-align: center; overflow: hidden; text-decoration: none; color: inherit;
+            display: flex; flex-direction: column; align-items: center; gap: 12px;
+        }
+        .card::before {
+            content: ''; position: absolute; inset: 0;
+            background: radial-gradient(ellipse at 50% 0%, rgba(201,168,76,0.06) 0%, transparent 65%);
+            opacity: 0; transition: opacity .3s;
+        }
+        .card:hover { border-color: var(--gold-dim); transform: translateY(-4px); box-shadow: 0 16px 40px rgba(0,0,0,.5); }
+        .card:hover::before { opacity: 1; }
+        .card.disabled { opacity: .38; cursor: default; pointer-events: none; }
+
+        .card-icon { width: 48px; height: 48px; display: flex; align-items: center; justify-content: center; color: var(--gold); }
+        .card-icon svg { width: 100%; height: 100%; fill: currentColor; }
+        .card-title { font-family: 'Cinzel', serif; font-size: 14px; font-weight: 600; color: var(--text); letter-spacing: .5px; }
+        .card-desc { font-size: 12px; color: var(--muted); line-height: 1.55; font-weight: 300; }
+
+        /* ── ELO badge ── */
+        .elo-badge {
+            display: inline-block; margin-top: 4px;
+            padding: 3px 12px; border-radius: 20px;
+            font-family: 'Cinzel', serif; font-size: 11px; font-weight: 700;
+            letter-spacing: 1px; color: var(--gold);
+            background: rgba(201,168,76,0.1); border: 1px solid rgba(201,168,76,0.25);
+        }
+
+        /* ── AI card border accent by level ── */
+        .card.ai-model  { border-color: #2a2a2a; }
+        .card.ai-model:hover  { border-color: #4caf7d80; }
+        .card.ai-depth { border-color: #2a2a2a; }
+        .card.ai-depth:hover { border-color: #cf5f5f80; }
+
+        .badge-soon {
+            position: absolute; top: 12px; right: 12px; background: #2a2a2a; border: 1px solid #3a3a3a;
+            color: #666; font-size: 9px; letter-spacing: 1px; text-transform: uppercase;
+            padding: 3px 7px; border-radius: 20px;
+        }
+
+        /* ── Modal ── */
+        .modal-backdrop { display:none; position:fixed; inset:0; background:rgba(0,0,0,.82); z-index:100; align-items:center; justify-content:center; }
+        .modal-backdrop.open { display:flex; }
+        .modal {
+            background: var(--surface); border: 1px solid var(--border); border-radius: 16px;
+            padding: 36px 32px; width: 400px; max-width:92vw;
+            box-shadow: 0 30px 80px rgba(0,0,0,.7); animation: slideUp .22s ease;
+            position: relative;
+        }
+        @keyframes slideUp { from{transform:translateY(18px);opacity:0} to{transform:translateY(0);opacity:1} }
+        .modal h2 { font-family:'Cinzel',serif; font-size:20px; color:var(--gold); margin-bottom:24px; text-align:center; }
+
+        .modal-engine-info {
+            background: #111; border: 1px solid var(--border); border-radius: 10px;
+            padding: 12px 16px; margin-bottom: 20px; text-align: center;
+        }
+        .modal-engine-name { font-family:'Cinzel',serif; font-size:15px; color:var(--text); letter-spacing:.5px; }
+        .modal-engine-elo  { font-size:12px; color:var(--gold); margin-top:4px; letter-spacing:1px; }
+        .modal-engine-desc { font-size:12px; color:var(--muted); margin-top:6px; line-height:1.5; }
+
+        .form-row { margin-bottom: 20px; }
+        .form-row label { display:block; font-size:11px; text-transform:uppercase; letter-spacing:1.5px; color:var(--muted); margin-bottom:9px; }
+        .color-row { display:flex; gap:12px; }
+        .color-btn {
+            flex:1; background:#111; border:2px solid var(--border); padding:14px 0; border-radius:10px;
+            cursor:pointer; display:flex; justify-content:center; align-items:center;
+            transition:border-color .2s,background .2s;
+        }
+        .color-btn.active { border-color:var(--gold); background:#242010; }
+        .color-btn img { width:42px; height:42px; }
+
+        /* ── Time control chips ── */
+        .time-chips { display:flex; gap:8px; flex-wrap:wrap; }
+        .time-chip {
+            flex:1; min-width:52px; background:#111; border:1px solid var(--border); border-radius:8px;
+            padding:9px 4px; cursor:pointer; text-align:center; font-family:'Cinzel',serif;
+            font-size:12px; color:var(--muted); transition:border-color .2s,background .2s,color .2s;
+        }
+        .time-chip:hover { border-color:var(--gold-dim); color:var(--text); }
+        .time-chip.active { border-color:var(--gold); background:#1e1a0e; color:var(--gold); }
+        .time-chip span { display:block; font-size:9px; letter-spacing:1px; text-transform:uppercase; color:var(--muted); margin-top:2px; }
+
+        .btn-primary {
+            width:100%; padding:14px; background:var(--gold); border:none; color:#111;
+            font-family:'Cinzel',serif; font-weight:700; font-size:15px; letter-spacing:1px;
+            border-radius:8px; cursor:pointer; margin-top:8px; transition:background .2s,transform .1s;
+        }
+        .btn-primary:hover { background:#d4b55a; }
+        .btn-primary:active { transform:scale(.98); }
+        .btn-close { position:absolute; top:14px; right:16px; background:none; border:none; color:var(--muted); font-size:20px; cursor:pointer; line-height:1; }
+
+        footer { margin-top:52px; color:#444; font-size:12px; letter-spacing:1px; text-align:center; }
+    </style>
+
+    <!-- ── Mobile styles (max-width: 700px) ─────────────────────────────
+         Edit ONLY this block for mobile layout changes on the home page.
+    ─────────────────────────────────────────────────────────────────── -->
+    <style media="screen and (max-width: 700px)">
+        .grid-2 { grid-template-columns: 1fr; }
+    </style>
+</head>
+<body>
+<div class="page">
+
+    <header>
+        <svg class="logo-mark" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M20 54h24l-2-8H22l-2 8z" fill="#c9a84c" opacity="0.8"/>
+            <path d="M14 22c0-2 1-4 3-5l2-3h6l1-4h8l-1 4 4 3c2 2 3 5 3 8v2l-4 12H18L14 26v-4z" fill="#c9a84c"/>
+            <circle cx="28" cy="20" r="3" fill="#0f0f0f"/>
+            <path d="M22 30c2-3 6-4 10-3" stroke="#0f0f0f" stroke-width="1.5" stroke-linecap="round"/>
+        </svg>
+        <h1>CHESS HUB</h1>
+        <p>Chess — Play · Study · Scout</p>
+    </header>
+
+    <div class="section-label">Choose your opponent</div>
+    <div class="grid-2">
+
+        <a class="card ai-model" onclick="openModal('model')" href="#">
+            <div class="card-icon">
+                <svg viewBox="0 0 24 24"><path d="M12 2a2 2 0 0 1 2 2c0 .74-.4 1.39-1 1.73V7h1a7 7 0 0 1 7 7h1a1 1 0 0 1 1 1v3a1 1 0 0 1-1 1h-1v1a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-1H2a1 1 0 0 1-1-1v-3a1 1 0 0 1 1-1h1a7 7 0 0 1 7-7h1V5.73c-.6-.34-1-.99-1-1.73a2 2 0 0 1 2-2M9 11a1 1 0 0 0-1 1 1 1 0 0 0 1 1 1 1 0 0 0 1-1 1 1 0 0 0-1-1m6 0a1 1 0 0 0-1 1 1 1 0 0 0 1 1 1 1 0 0 0 1-1 1 1 0 0 0-1-1m-3 4l-2 2h4l-2-2z"/></svg>
+            </div>
+            <div class="card-title">Chess Hub · Model</div>
+            <div class="card-desc">CNN neural networks trained on real games. Easy plays creatively; Medium adds tactical refinement.</div>
+            <div class="elo-badge">800 – 1200 ELO</div>
+        </a>
+
+        <a class="card ai-depth" onclick="openModal('negamax')" href="#">
+            <div class="card-icon">
+                <svg viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-7 3c1.93 0 3.5 1.57 3.5 3.5S13.93 13 12 13s-3.5-1.57-3.5-3.5S10.07 6 12 6zm7 13H5v-.23c0-.62.28-1.2.76-1.58C7.47 15.82 9.64 15 12 15s4.53.82 6.24 2.19c.48.38.76.97.76 1.58V19z"/></svg>
+            </div>
+            <div class="card-title">Chess Hub · Analytical</div>
+            <div class="card-desc">Classical NegaMax engine. Highly tactical, prioritizes material and strict positional evaluation.</div>
+            <div class="elo-badge">1400 - 1800 ELO</div>
+        </a>
+    </div>
+
+    <div class="section-label">Study &amp; Scout</div>
+    <div class="grid-2">
+
+        <a class="card" href="/scout">
+            <div class="card-icon">
+                <svg viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
+            </div>
+            <div class="card-title">Opening Scout</div>
+            <div class="card-desc">Analyse any player's opening strengths and weaknesses from Lichess &amp; Chess.com.</div>
+        </a>
+
+        <a class="card" href="/analysis">
+            <div class="card-icon">
+                <svg viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-7 14l-5-5 1.41-1.41L12 14.17l7.59-7.59L21 8l-9 9z"/></svg>
+            </div>
+            <div class="card-title">Analysis</div>
+            <div class="card-desc">Deep Stockfish engine analysis with move classification and accuracy scores.</div>
+        </a>
+
+        <a class="card" href="/history">
+            <div class="card-icon">
+                <svg viewBox="0 0 24 24"><path d="M13 3a9 9 0 0 0-9 9H1l3.89 3.89.07.14L9 12H6c0-3.87 3.13-7 7-7s7 3.13 7 7-3.13 7-7 7c-1.93 0-3.68-.79-4.94-2.06l-1.42 1.42A8.954 8.954 0 0 0 13 21a9 9 0 0 0 0-18zm-1 5v5l4.28 2.54.72-1.21-3.5-2.08V8H12z"/></svg>
+            </div>
+            <div class="card-title">Game History</div>
+            <div class="card-desc">Review, download, and analyse your past games from history.</div>
+        </a>
+
+        <a class="card" href="/puzzles">
+            <div class="card-icon">
+                <svg viewBox="0 0 24 24"><path d="M20.5 11H19V7c0-1.1-.9-2-2-2h-4V3.5C13 2.12 11.88 1 10.5 1S8 2.12 8 3.5V5H4c-1.1 0-1.99.9-1.99 2v3.8H3.5c1.49 0 2.7 1.21 2.7 2.7s-1.21 2.7-2.7 2.7H2V20c0 1.1.9 2 2 2h3.8v-1.5c0-1.49 1.21-2.7 2.7-2.7 1.49 0 2.7 1.21 2.7 2.7V22H17c1.1 0 2-.9 2-2v-4h1.5c1.38 0 2.5-1.12 2.5-2.5S21.88 11 20.5 11z"/></svg>
+            </div>
+            <div class="card-title">Puzzles</div>
+            <div class="card-desc">Sharpen tactics with 4M+ Lichess puzzles. Build streak,analyse puzzle.</div>
+        </a>
+
+    </div>
+
+    <footer>CHESS HUB &nbsp;·&nbsp; Chess learning Platform</footer>
+</div>
+
+<div class="modal-backdrop" id="play-modal">
+    <div class="modal">
+        <button class="btn-close" onclick="closeModal()">×</button>
+        <h2 id="modal-title">New Game</h2>
+
+        <div class="modal-engine-info">
+            <div class="modal-engine-name" id="modal-engine-name">Chess Hub · Model</div>
+            <div class="modal-engine-elo"  id="modal-engine-elo">≈ 800 ELO</div>
+            <div class="modal-engine-desc" id="modal-engine-desc">CNN neural network — plays with creative, human-like style.</div>
+        </div>
+
+        <div class="form-row" id="difficulty-row" style="display:none;">
+            <label>Difficulty</label>
+            <div class="time-chips" id="difficulty-chips">
+                <!-- chips injected dynamically by openModal() -->
+            </div>
+        </div>
+
+        <div class="form-row">
+            <label>Your Color</label>
+            <div class="color-row">
+                <div class="color-btn active" id="btn-white" onclick="selectColor('white')">
+                    <img src="/Chess_AI/images/wK.png" alt="White">
+                </div>
+                <div class="color-btn" id="btn-black" onclick="selectColor('black')">
+                    <img src="/Chess_AI/images/bK.png" alt="Black">
+                </div>
+            </div>
+        </div>
+
+        <div class="form-row">
+            <label>Time Control</label>
+            <div class="time-chips" id="time-control-row">
+                <div class="time-chip active" data-mins="0"  onclick="selectTime(this)">∞<span>No Clock</span></div>
+                <div class="time-chip"        data-mins="3"  onclick="selectTime(this)">3<span>Blitz</span></div>
+                <div class="time-chip"        data-mins="5"  onclick="selectTime(this)">5<span>Blitz</span></div>
+                <div class="time-chip"        data-mins="10" onclick="selectTime(this)">10<span>Rapid</span></div>
+                <div class="time-chip"        data-mins="15" onclick="selectTime(this)">15<span>Rapid</span></div>
+            </div>
+        </div>
+
+        <button class="btn-primary" onclick="launchGame()">Start Game</button>
+    </div>
+</div>
+
+<script>
+    let currentEngine     = 'model';
+    let selectedColor     = 'white';
+    let selectedTime      = 0;
+    let currentDifficulty = 'model';   // tracks active chip in difficulty row
+
+    // 'model'  → Model card (Easy / Medium chips)
+    // 'negamax' → Analytical card (Medium / Hard chips)
+    let activeCardGroup = 'model';
+
+    // ── Chip definitions per card group ─────────────────────────────────
+    const diffChips = {
+        model: [
+            { diff: 'model',       label: 'Easy',   sub: '800 ELO'  },
+            { diff: 'ghost_model', label: 'Medium',  sub: '1200 ELO' },
+        ],
+        negamax: [
+            { diff: 'negamax_2', label: 'Medium', sub: '1400 ELO' },
+            { diff: 'negamax_5', label: 'Hard',   sub: '1800 ELO' },
+        ],
+    };
+
+    // ── Engine metadata for the info panel ──────────────────────────────
+    const engineMeta = {
+        model: {
+            name: 'Chess Hub · Easy',
+            elo:  '≈ 800 ELO',
+            desc: 'CNN neural network — plays with creative, human-like style.',
+        },
+        ghost_model: {
+            name: 'Chess Hub · Medium',
+            elo:  '≈ 1200 ELO',
+            desc: 'ChessHubNet + 1-ply tactical refinement — stronger positional play.',
+        },
+        negamax_2: {
+            name: 'Chess Hub · Medium',
+            elo:  '≈ 1400 ELO',
+            desc: 'NegaMax depth 2 — highly tactical, strict material evaluation.',
+        },
+        negamax_5: {
+            name: 'Chess Hub · Hard',
+            elo:  '≈ 1800 ELO',
+            desc: 'NegaMax depth 4 — deep search, ruthless positional precision.',
+        },
+    };
+
+    // ── Open modal ───────────────────────────────────────────────────────
+    function openModal(cardGroup) {
+        activeCardGroup = cardGroup;
+
+        // Rebuild difficulty chips for this card group
+        const chips     = diffChips[cardGroup];
+        const container = document.getElementById('difficulty-chips');
+        container.innerHTML = '';
+        chips.forEach((c, i) => {
+            const el = document.createElement('div');
+            el.className       = 'time-chip' + (i === 0 ? ' active' : '');
+            el.dataset.diff    = c.diff;
+            el.innerHTML       = `${c.label}<span>${c.sub}</span>`;
+            el.addEventListener('click', () => selectDifficulty(el));
+            container.appendChild(el);
+        });
+
+        // Default selection = first chip
+        currentDifficulty = chips[0].diff;
+        _updateInfoPanel(currentDifficulty);
+
+        document.getElementById('difficulty-row').style.display = 'block';
+        document.getElementById('modal-title').textContent = 'Play Chess Hub';
+        document.getElementById('play-modal').classList.add('open');
+    }
+
+    function closeModal() {
+        document.getElementById('play-modal').classList.remove('open');
+    }
+
+    document.getElementById('play-modal').addEventListener('click', function (e) {
+        if (e.target === this) closeModal();
+    });
+
+    // ── Difficulty chip selection ────────────────────────────────────────
+    function selectDifficulty(el) {
+        document.querySelectorAll('#difficulty-chips .time-chip')
+            .forEach(c => c.classList.remove('active'));
+        el.classList.add('active');
+        currentDifficulty = el.dataset.diff;
+        _updateInfoPanel(currentDifficulty);
+    }
+
+    function _updateInfoPanel(engineKey) {
+        const meta = engineMeta[engineKey] || {};
+        document.getElementById('modal-engine-name').textContent = meta.name || '';
+        document.getElementById('modal-engine-elo').textContent  = meta.elo  || '';
+        document.getElementById('modal-engine-desc').textContent = meta.desc || '';
+    }
+
+    // ── Color / time helpers ─────────────────────────────────────────────
+    function selectColor(color) {
+        selectedColor = color;
+        document.querySelectorAll('.color-btn').forEach(b => b.classList.remove('active'));
+        document.getElementById('btn-' + color).classList.add('active');
+    }
+
+    function selectTime(el) {
+        document.querySelectorAll('#time-control-row .time-chip')
+            .forEach(c => c.classList.remove('active'));
+        el.classList.add('active');
+        selectedTime = parseInt(el.dataset.mins);
+    }
+
+    // ── Launch ───────────────────────────────────────────────────────────
+    function launchGame() {
+        const params = new URLSearchParams({
+            mode:   'ai',
+            color:  selectedColor,
+            engine: currentDifficulty,   // e.g. 'model' | 'ghost_model' | 'negamax_2' | 'negamax_5'
+            time:   selectedTime,
+        });
+        window.location.href = '/game?' + params.toString();
+    }
+</script>
+</body>
+</html>

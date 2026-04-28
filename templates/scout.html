@@ -1,0 +1,815 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Chess Hub – Opening Scout</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+    <style>
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+        :root {
+            --bg:       #0f0f0f;
+            --surface:  #181818;
+            --surface2: #1e1e1e;
+            --border:   #2c2c2c;
+            --gold:     #c9a84c;
+            --gold-dim: #7a6228;
+            --text:     #e8e8e8;
+            --muted:    #888;
+            --green:    #4caf7d;
+            --red:      #cf5f5f;
+            --blue:     #5f8fcf;
+        }
+
+        html, body {
+            height: 100%;
+            background: var(--bg);
+            color: var(--text);
+            font-family: 'DM Sans', sans-serif;
+        }
+
+        body::before {
+            content: '';
+            position: fixed;
+            inset: 0;
+            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        body::after {
+            content: '';
+            position: fixed;
+            top: -20%;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 600px;
+            height: 400px;
+            background: radial-gradient(ellipse, rgba(201,168,76,0.05) 0%, transparent 70%);
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        .page {
+            position: relative;
+            z-index: 1;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 50px 20px 60px;
+        }
+
+        /* ── Top Bar ── */
+        .top-bar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            width: 100%;
+            max-width: 820px;
+            margin-bottom: 12px;
+        }
+        .top-bar h1 {
+            font-family: 'Cinzel', serif;
+            font-size: clamp(22px, 3.5vw, 36px);
+            font-weight: 700;
+            color: var(--gold);
+            letter-spacing: 3px;
+            text-shadow: 0 0 30px rgba(201,168,76,0.2);
+            margin: 0;
+        }
+        .header-desc {
+            color: var(--muted);
+            font-size: 14px;
+            margin-bottom: 48px;
+            font-weight: 300;
+            letter-spacing: 0.5px;
+            text-align: center;
+        }
+
+        .btn {
+            padding: 9px 20px;
+            border-radius: 6px;
+            border: none;
+            cursor: pointer;
+            font-family: 'DM Mono', monospace;
+            font-size: 13px;
+            font-weight: 600;
+            color: white;
+            transition: background 0.18s, transform 0.1s;
+            white-space: nowrap;
+        }
+        .btn:active { transform: scale(0.96); }
+        .btn-secondary { background: #2e2e2e; border: 1px solid #444; }
+        .btn-secondary:hover { background: #3a3a3a; border-color: var(--gold-dim); }
+
+        /* ── Search box ── */
+        .search-wrap {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 48px;
+            width: 100%;
+            max-width: 520px;
+        }
+
+        .search-input {
+            flex: 1;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            color: var(--text);
+            font-family: 'DM Sans', sans-serif;
+            font-size: 15px;
+            padding: 14px 18px;
+            border-radius: 10px;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+        .search-input::placeholder { color: #555; }
+        .search-input:focus { border-color: var(--gold-dim); }
+
+        .search-btn {
+            padding: 14px 28px;
+            background: var(--gold);
+            border: none;
+            color: #111;
+            font-family: 'Cinzel', serif;
+            font-size: 13px;
+            font-weight: 700;
+            letter-spacing: 1px;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: background 0.2s, transform 0.1s;
+            white-space: nowrap;
+        }
+        .search-btn:hover { background: #d4b55a; }
+        .search-btn:active { transform: scale(0.97); }
+        .search-btn:disabled { background: #4a3c1e; color: #666; cursor: not-allowed; }
+
+        /* ── Status / loader ── */
+        .status-bar {
+            display: none;
+            text-align: center;
+            margin-bottom: 32px;
+            font-size: 14px;
+            color: var(--muted);
+            letter-spacing: 0.5px;
+        }
+
+        .status-bar.visible { display: block; }
+
+        .dots::after {
+            content: '';
+            animation: dotdot 1.5s infinite;
+        }
+        @keyframes dotdot {
+            0%   { content: ''; }
+            25%  { content: '.'; }
+            50%  { content: '..'; }
+            75%  { content: '...'; }
+            100% { content: ''; }
+        }
+
+        .spinner {
+            display: inline-block;
+            width: 16px; height: 16px;
+            border: 2px solid #333;
+            border-top-color: var(--gold);
+            border-radius: 50%;
+            animation: spin 0.7s linear infinite;
+            vertical-align: middle;
+            margin-right: 8px;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* ── Results panel ── */
+        .results { width: 100%; max-width: 820px; display: none; }
+        .results.visible { display: block; }
+
+        .results-header {
+            display: flex;
+            align-items: baseline;
+            gap: 14px;
+            margin-bottom: 22px;
+        }
+
+        .results-header h2 {
+            font-family: 'Cinzel', serif;
+            font-size: 20px;
+            color: var(--gold);
+            letter-spacing: 2px;
+        }
+
+        .stat-badge {
+            background: var(--surface2);
+            border: 1px solid var(--border);
+            color: var(--muted);
+            font-size: 12px;
+            padding: 3px 10px;
+            border-radius: 20px;
+            font-family: 'DM Mono', monospace;
+        }
+
+        /* ── Section ── */
+        .section {
+            margin-bottom: 30px;
+        }
+
+        .section-title {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 14px;
+        }
+
+        .section-title span {
+            font-size: 11px;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            color: var(--muted);
+            font-weight: 500;
+        }
+
+        .pill {
+            font-size: 10px;
+            letter-spacing: 1.5px;
+            font-weight: 700;
+            padding: 3px 9px;
+            border-radius: 20px;
+            text-transform: uppercase;
+        }
+
+        .pill-exploit { background: rgba(76,175,125,0.15); color: var(--green); border: 1px solid rgba(76,175,125,0.3); }
+        .pill-avoid   { background: rgba(207,95,95,0.15);  color: var(--red);   border: 1px solid rgba(207,95,95,0.3); }
+
+        /* ── Confidence badge ── */
+        .confidence-wrap {
+            display: flex;
+            align-items: center;
+            gap: 7px;
+            margin-top: 12px;
+            padding-top: 10px;
+            border-top: 1px solid #222;
+        }
+        .conf-label {
+            font-size: 10px;
+            color: #555;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            font-family: 'DM Mono', monospace;
+        }
+        .conf-track {
+            flex: 1;
+            height: 4px;
+            background: #222;
+            border-radius: 2px;
+            overflow: hidden;
+        }
+        .conf-fill {
+            height: 100%;
+            border-radius: 2px;
+            background: linear-gradient(90deg, #5f7a4c, #c9a84c);
+            transition: width 1s cubic-bezier(0.16, 1, 0.3, 1);
+            width: 0;
+        }
+        .conf-pct {
+            font-size: 11px;
+            font-family: 'DM Mono', monospace;
+            color: var(--gold);
+            min-width: 32px;
+            text-align: right;
+        }
+        .conf-factors {
+            font-size: 10.5px;
+            color: #555;
+            margin-top: 5px;
+            font-family: 'DM Mono', monospace;
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+        .conf-factors span { white-space: nowrap; }
+        .conf-factors .hi  { color: #7aad6e; }
+        .conf-factors .lo  { color: #cf5f5f; }
+        .conf-factors .mid { color: #aaa; }
+
+        /* ── Opening card ── */
+        .opening-cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
+            gap: 14px;
+        }
+
+        .opening-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 20px 22px;
+            transition: border-color 0.2s;
+        }
+        .opening-card:hover { border-color: #3a3a3a; }
+
+        .oc-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 14px;
+        }
+
+        .oc-name {
+            font-family: 'Cinzel', serif;
+            font-size: 14px;
+            color: var(--text);
+            line-height: 1.4;
+            max-width: 75%;
+        }
+
+        .oc-side {
+            font-size: 11px;
+            color: #555;
+            font-family: 'DM Mono', monospace;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-top: 3px;
+        }
+
+        /* ── Bar chart ── */
+        .bar-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 7px;
+        }
+
+        .bar-label {
+            font-size: 11px;
+            color: var(--muted);
+            width: 36px;
+            text-align: right;
+            font-family: 'DM Mono', monospace;
+            flex-shrink: 0;
+        }
+
+        .bar-track {
+            flex: 1;
+            height: 7px;
+            background: #222;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        .bar-fill {
+            height: 100%;
+            border-radius: 4px;
+            transition: width 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+            width: 0;
+        }
+
+        .bar-fill.win  { background: var(--green); }
+        .bar-fill.draw { background: #888; }
+        .bar-fill.loss { background: var(--red); }
+
+        .bar-pct {
+            font-size: 11px;
+            color: var(--muted);
+            width: 32px;
+            font-family: 'DM Mono', monospace;
+            flex-shrink: 0;
+        }
+
+        .oc-stats {
+            display: flex;
+            gap: 16px;
+            margin-top: 14px;
+            padding-top: 12px;
+            border-top: 1px solid #222;
+        }
+
+        .stat-item {
+            text-align: center;
+        }
+
+        .stat-val {
+            font-family: 'DM Mono', monospace;
+            font-size: 16px;
+            color: var(--text);
+        }
+
+        .stat-lbl {
+            font-size: 10px;
+            color: #555;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-top: 2px;
+        }
+
+        /* ── Tip box ── */
+        .tip-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-left: 3px solid var(--gold-dim);
+            border-radius: 10px;
+            padding: 16px 20px;
+            font-size: 13.5px;
+            color: #aaa;
+            line-height: 1.6;
+            margin-top: 10px;
+        }
+
+        .tip-card strong { color: var(--gold); }
+
+        /* ── Error ── */
+        .error-box {
+            display: none;
+            background: rgba(139,0,0,0.15);
+            border: 1px solid rgba(139,0,0,0.4);
+            border-radius: 10px;
+            padding: 16px 20px;
+            color: #e07070;
+            font-size: 14px;
+            max-width: 520px;
+            margin-bottom: 24px;
+            text-align: center;
+        }
+        .error-box.visible { display: block; }
+
+        /* ── Empty state ── */
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: var(--muted);
+        }
+        .empty-state svg { width: 52px; height: 52px; fill: #333; margin-bottom: 16px; }
+        .empty-state h3 { font-family: 'Cinzel', serif; font-size: 16px; color: #555; margin-bottom: 8px; }
+        .empty-state p  { font-size: 13px; }
+
+        /* ── Divider ── */
+        .divider {
+            height: 1px;
+            background: var(--border);
+            margin: 32px 0;
+        }
+
+        /* ── Scout Progress Tracker ── */
+        .scout-progress {
+            display: none;
+            flex-direction: column;
+            gap: 14px;
+            max-width: 440px;
+            width: 100%;
+            margin: 0 auto 32px;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 24px;
+        }
+        .scout-progress.visible { display: flex; }
+        .prog-step { display: flex; align-items: center; gap: 14px; color: var(--muted); font-size: 14px; }
+        .prog-step.active { color: var(--text); }
+        .prog-step.done { color: var(--green); }
+
+        .prog-icon { width: 22px; height: 22px; border-radius: 50%; display: flex; align-items: center; justify-content: center; border: 2px solid var(--muted); flex-shrink: 0;}
+        .prog-step.active .prog-icon { border-color: var(--gold); border-top-color: transparent; animation: spin 0.8s linear infinite; }
+        .prog-step.done .prog-icon { border-color: var(--green); background: var(--green); }
+        .prog-step.done .prog-icon::after { content: '✓'; color: #000; font-size: 14px; font-weight: bold; }
+
+        .prog-bar-wrap { height: 6px; background: #222; border-radius: 3px; overflow: hidden; margin-top: 4px; display: none; }
+        .prog-bar-wrap.visible { display: block; }
+        .prog-bar-fill { height: 100%; width: 0%; background: var(--gold); transition: width 0.4s ease; }
+    </style>
+</head>
+<body>
+<div class="page">
+
+    <div class="top-bar">
+        <h1>OPENING SCOUT</h1>
+        <button class="btn btn-secondary" onclick="window.location.href='/'">⬅ Home</button>
+    </div>
+    <div class="header-desc">Enter a Chess.com or Lichess username to analyse their opening habits</div>
+
+    <div class="search-wrap">
+        <input  class="search-input"
+                id="username-input"
+                type="text"
+                placeholder="e.g. hikaru, magnus"
+                autocomplete="off"
+                onkeydown="if(event.key==='Enter') runScout()">
+        <button class="search-btn" id="scout-btn" onclick="runScout()">Scout</button>
+    </div>
+
+    <div class="error-box" id="error-box"></div>
+
+    <div class="scout-progress" id="scout-progress">
+        <div class="prog-step" id="step-lichess">
+            <div class="prog-icon"></div>
+            <span>Fetching Lichess games</span>
+        </div>
+        <div class="prog-step" id="step-chesscom">
+            <div class="prog-icon"></div>
+            <span>Fetching Chess.com games</span>
+        </div>
+        <div class="prog-step" id="step-analyze">
+            <div class="prog-icon"></div>
+            <span>Analysing Openings</span>
+        </div>
+        <div class="prog-bar-wrap" id="prog-bar-wrap">
+            <div class="prog-bar-fill" id="prog-bar-fill"></div>
+        </div>
+    </div>
+
+    <div class="results" id="results">
+
+        <div class="results-header">
+            <h2 id="results-title">REPORT</h2>
+            <span class="stat-badge" id="games-badge">— games</span>
+        </div>
+
+        <div class="section" id="exploit-section">
+            <div class="section-title">
+                <span class="pill pill-exploit">Exploit</span>
+                <span>Openings where they are vulnerable — prepare these</span>
+            </div>
+            <div class="opening-cards" id="exploit-cards"></div>
+        </div>
+
+        <div class="divider"></div>
+
+        <div class="section" id="avoid-section">
+            <div class="section-title">
+                <span class="pill pill-avoid">Avoid</span>
+                <span>Openings where they perform well — sidestep these</span>
+            </div>
+            <div class="opening-cards" id="avoid-cards"></div>
+        </div>
+
+        <div id="tip-wrap"></div>
+
+    </div>
+</div>
+
+<script>
+
+
+async function runScout() {
+    const username = document.getElementById('username-input').value.trim();
+    if (!username) return;
+
+    const btn = document.getElementById('scout-btn');
+    const errorBox = document.getElementById('error-box');
+    const results = document.getElementById('results');
+    const progBox = document.getElementById('scout-progress');
+    const s1 = document.getElementById('step-lichess');
+    const s2 = document.getElementById('step-chesscom');
+    const s3 = document.getElementById('step-analyze');
+    const pBarWrap = document.getElementById('prog-bar-wrap');
+    const pBarFill = document.getElementById('prog-bar-fill');
+
+    btn.disabled = true;
+    errorBox.classList.remove('visible');
+    results.classList.remove('visible');
+
+    // Reset tracker UI
+    s1.className = 'prog-step active';
+    s2.className = 'prog-step';
+    s3.className = 'prog-step';
+    pBarWrap.classList.remove('visible');
+    pBarFill.style.width = '0%';
+    progBox.classList.add('visible');
+
+    // Simulated UX timeline (runs concurrently with the actual backend fetch)
+    let t1 = setTimeout(() => {
+        s1.className = 'prog-step done';
+        s2.className = 'prog-step active';
+    }, 1200 + Math.random() * 800); // 1.2s to 2.0s
+
+    let t2 = setTimeout(() => {
+        s2.className = 'prog-step done';
+        s3.className = 'prog-step active';
+        pBarWrap.classList.add('visible');
+
+        // Push bar up to 90% while waiting for ML model
+        setTimeout(() => { pBarFill.style.width = '35%'; }, 100);
+        setTimeout(() => { pBarFill.style.width = '75%'; }, 1000);
+        setTimeout(() => { pBarFill.style.width = '90%'; }, 2500);
+    }, 2800 + Math.random() * 800);
+
+    try {
+        const res  = await fetch('/scout', {
+            method:  'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body:    JSON.stringify({ username })
+        });
+        const data = await res.json();
+
+        // Server responded! Force visual completion
+        clearTimeout(t1);
+        clearTimeout(t2);
+        s1.className = 'prog-step done';
+        s2.className = 'prog-step done';
+        s3.className = 'prog-step done';
+        pBarWrap.classList.add('visible');
+        pBarFill.style.width = '100%';
+
+        // Wait a tiny fraction so the user sees the 100% state before hiding it
+        setTimeout(() => {
+            progBox.classList.remove('visible');
+            if (!res.ok || data.error) {
+                showError(data.error || 'Something went wrong. Please try again.');
+                return;
+            }
+            renderResults(username, data);
+        }, 600);
+
+    } catch (e) {
+        progBox.classList.remove('visible');
+        showError('Could not reach the server. Is the Flask app running?');
+    } finally {
+        btn.disabled = false;
+    }
+}
+
+
+function showError(msg) {
+    const box = document.getElementById('error-box');
+    box.textContent = msg;
+    box.classList.add('visible');
+}
+
+function renderResults(username, data) {
+    const results = document.getElementById('results');
+
+    document.getElementById('results-title').textContent = username.toUpperCase() + ' — SCOUT REPORT';
+    document.getElementById('games-badge').textContent   = (data.total_games || 0) + ' games analysed';
+
+    const exploitCards = document.getElementById('exploit-cards');
+    const avoidCards   = document.getElementById('avoid-cards');
+    exploitCards.innerHTML = '';
+    avoidCards.innerHTML   = '';
+
+    let exploit = (data.results || []).filter(r => r.label === 'exploit');
+    let avoid   = (data.results || []).filter(r => r.label === 'avoid');
+
+    // --- NEW SORTING LOGIC ---
+    // --- NEW SORTING LOGIC ---
+    function sortCards(a, b) {
+        // 1. Sort by color first: Black before White
+        if (a.color !== b.color) {
+            return a.color === 'black' ? -1 : 1;
+        }
+
+        // 2. Within the same color, sort by confidence score (highest first)
+        const scoreA = a.label === 'exploit' ? (a.exploit_score || 0) : (a.avoid_score || 0);
+        const scoreB = b.label === 'exploit' ? (b.exploit_score || 0) : (b.avoid_score || 0);
+
+        if (scoreB !== scoreA) {
+            return scoreB - scoreA;
+        }
+
+        // 3. If confidence is a tie, sort by total games (highest first)
+        return b.totalgames - a.totalgames;
+    }
+
+    exploit.sort(sortCards);
+    avoid.sort(sortCards);
+
+    if (exploit.length === 0) {
+        exploitCards.innerHTML = emptyMsg('No strong exploitable openings found.');
+    } else {
+        exploit.forEach(r => exploitCards.appendChild(buildCard(r)));
+    }
+
+    if (avoid.length === 0) {
+        avoidCards.innerHTML = emptyMsg('No dominant openings detected.');
+    } else {
+        avoid.forEach(r => avoidCards.appendChild(buildCard(r)));
+    }
+
+    // Preparation tip
+    const tipWrap = document.getElementById('tip-wrap');
+    tipWrap.innerHTML = '';
+    if (exploit.length > 0) {
+        const top    = exploit[0];
+        const tipDiv = document.createElement('div');
+        tipDiv.className = 'tip-card';
+        tipDiv.innerHTML = `<strong>Preparation tip:</strong> ${username} is most vulnerable with
+            <strong>${top.opening}</strong> as ${top.color}.
+            They've lost ${Math.round(top.loss_rate*100)}% of ${top.totalgames} games in this line.
+            Consider steering the game into this opening — study the key refutations and traps.`;
+        tipWrap.appendChild(tipDiv);
+    }
+
+    results.classList.add('visible');
+
+    // Trigger bar animations after a short delay
+    requestAnimationFrame(() => {
+        setTimeout(() => {
+            document.querySelectorAll('.bar-fill[data-pct]').forEach(el => {
+                el.style.width = el.dataset.pct + '%';
+            });
+            document.querySelectorAll('.conf-fill[data-pct]').forEach(el => {
+                el.style.width = el.dataset.pct + '%';
+            });
+        }, 80);
+    });
+}
+function buildCard(row) {
+    const win  = Math.round((row.win_rate  || 0) * 100);
+    const loss = Math.round((row.loss_rate || 0) * 100);
+    const draw = Math.max(0, 100 - win - loss);
+
+    // Raw composite score from backend (0–~1.2 range)
+    const rawScore   = row.label === 'exploit'
+        ? (row.exploit_score || 0)
+        : (row.avoid_score   || 0);
+
+    // Map score to 0–100% for the confidence bar display
+    // Scores above 0.8 are very rare; cap visual at 0.85 = 100%
+    const confPct    = Math.min(100, Math.round((rawScore / 0.85) * 100));
+
+    // ── Factor labels ────────────────────────────────────────────────
+    // Sample size tier (Cleaned up text, preserved array structure for CSS)
+    const n = row.totalgames;
+    const sampleLabel = n >= 30 ? ['hi',  `${n} games`]
+                      : n >= 12 ? ['mid', `${n} games`]
+                      :           ['lo',  `${n} games`];
+
+    // Opponent quality tier (Cleaned up text, preserved array structure for CSS)
+    const opp = Math.round(row.avg_opp || 0);
+    const oppLabel = opp >= 1700 ? ['hi',  `${opp} avg opp`]
+                   : opp >= 1200 ? ['mid', `${opp} avg opp`]
+                   :               ['lo',  `${opp} avg opp`];
+
+    // Rate clarity
+    const rateVal  = row.label === 'exploit' ? loss : win;
+    const rateCls  = rateVal >= 80 ? 'hi' : rateVal >= 50 ? 'mid' : 'lo';
+    const rateText = row.label === 'exploit'
+        ? `${loss}% loss rate`
+        : `${win}% win rate`;
+
+    const div = document.createElement('div');
+    div.className = 'opening-card';
+    div.innerHTML = `
+        <div class="oc-top">
+            <div>
+                <div class="oc-name">${row.opening}</div>
+                <div class="oc-side">as ${row.color}</div>
+            </div>
+            <span class="pill ${row.label === 'exploit' ? 'pill-exploit' : 'pill-avoid'}">${row.label}</span>
+        </div>
+
+        ${barRow('Win',  win,  'win')}
+        ${barRow('Draw', draw, 'draw')}
+        ${barRow('Loss', loss, 'loss')}
+
+        <div class="oc-stats">
+            <div class="stat-item">
+                <div class="stat-val">${n}</div>
+                <div class="stat-lbl">Games</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-val" style="color:var(--green)">${win}%</div>
+                <div class="stat-lbl">Win rate</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-val" style="color:var(--red)">${loss}%</div>
+                <div class="stat-lbl">Loss rate</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-val">${opp}</div>
+                <div class="stat-lbl">Avg Opp</div>
+            </div>
+        </div>
+
+        <div class="confidence-wrap">
+            <span class="conf-label">Confidence</span>
+            <div class="conf-track">
+                <div class="conf-fill" data-pct="${confPct}" style="width:0%"></div>
+            </div>
+            <span class="conf-pct">${confPct}%</span>
+        </div>
+        <div class="conf-factors">
+            <span class="${sampleLabel[0]}">${sampleLabel[1]}</span>
+            <span class="${oppLabel[0]}">${oppLabel[1]}</span>
+            <span class="${rateCls}">${rateText}</span>
+        </div>
+    `;
+    return div;
+}
+
+function barRow(label, pct, cls) {
+    return `
+        <div class="bar-row">
+            <div class="bar-label">${label}</div>
+            <div class="bar-track">
+                <div class="bar-fill ${cls}" data-pct="${pct}" style="width:0%"></div>
+            </div>
+            <div class="bar-pct">${pct}%</div>
+        </div>`;
+}
+
+function emptyMsg(msg) {
+    return `<p style="color:#555; font-size:13px; padding:10px 0;">${msg}</p>`;
+}
+</script>
+</body>
+</html>

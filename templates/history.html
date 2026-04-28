@@ -1,0 +1,704 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chess Hub – Game History</title>
+    <meta name="description" content="Review your chess game history – analyse past games, download PGNs, and track your performance">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+    <style>
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+        :root {
+            --bg:       #0f0f0f;
+            --surface:  #181818;
+            --surface2: #1e1e1e;
+            --border:   #2c2c2c;
+            --gold:     #c9a84c;
+            --gold-dim: #7a6228;
+            --text:     #e8e8e8;
+            --muted:    #888;
+            --green:    #4caf7d;
+            --red:      #cf5f5f;
+            --draw:     #7a9cc9;
+        }
+
+        html, body {
+            min-height: 100%;
+            background: var(--bg);
+            color: var(--text);
+            font-family: 'DM Sans', sans-serif;
+        }
+
+        body::before {
+            content: '';
+            position: fixed;
+            inset: 0;
+            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        body::after {
+            content: '';
+            position: fixed;
+            top: -20%;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 600px; height: 400px;
+            background: radial-gradient(ellipse, rgba(201,168,76,0.05) 0%, transparent 70%);
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        .page {
+            position: relative;
+            z-index: 1;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 30px 20px 40px;
+        }
+
+        /* ── Top Bar ── */
+        .top-bar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            width: 100%;
+            max-width: 1200px;
+            margin-bottom: 12px;
+        }
+        .top-bar h1 {
+            font-family: 'Cinzel', serif;
+            font-size: clamp(26px, 3.5vw, 40px);
+            font-weight: 700;
+            color: var(--gold);
+            letter-spacing: 3px;
+            text-shadow: 0 0 30px rgba(201,168,76,0.2);
+            margin: 0;
+        }
+        .header-desc {
+            color: var(--muted);
+            font-size: 15px;
+            margin-bottom: 24px;
+            font-weight: 300;
+            letter-spacing: 0.5px;
+            text-align: center;
+        }
+        .btn {
+            padding: 9px 20px;
+            border-radius: 6px;
+            border: none;
+            cursor: pointer;
+            font-family: 'DM Mono', monospace;
+            font-size: 13px;
+            font-weight: 600;
+            color: white;
+            transition: background 0.18s, transform 0.1s;
+            white-space: nowrap;
+        }
+        .btn:active { transform: scale(0.96); }
+        .btn-secondary { background: #2e2e2e; border: 1px solid #444; }
+        .btn-secondary:hover { background: #3a3a3a; border-color: var(--gold-dim); }
+
+        /* ── Filters ── */
+        .filter-row {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 24px;
+            justify-content: center;
+            width: 100%;
+            max-width: 900px;
+        }
+        .filter-chip {
+            padding: 8px 18px;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            font-size: 11px;
+            color: var(--muted);
+            cursor: pointer;
+            transition: all 0.2s;
+            font-family: 'Cinzel', serif;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+        }
+        .filter-chip:hover { border-color: var(--gold-dim); color: var(--text); }
+        .filter-chip.active { background: rgba(201,168,76,0.15); border-color: var(--gold); color: var(--gold); }
+
+        /* ── History table ── */
+        .table-wrap {
+            width: 100%;
+            max-width: 1200px;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            overflow: hidden;
+        }
+
+        .table-head {
+            display: grid;
+            grid-template-columns: 52px 1fr 1fr 90px 80px 90px 240px;
+            gap: 0;
+            background: #111;
+            border-bottom: 1px solid var(--border);
+            padding: 12px 20px;
+        }
+
+        .th {
+            font-family: 'Cinzel', serif;
+            font-size: 12px;
+            letter-spacing: 1.5px;
+            text-transform: uppercase;
+            color: var(--muted);
+        }
+
+        .table-body { min-height: 120px; }
+
+        .game-row {
+            display: grid;
+            grid-template-columns: 52px 1fr 1fr 90px 80px 90px 240px;
+            gap: 0;
+            padding: 16px 20px;
+            border-bottom: 1px solid #1e1e1e;
+            align-items: center;
+            transition: background 0.15s;
+            cursor: default;
+        }
+        .game-row:last-child { border-bottom: none; }
+        .game-row:hover { background: rgba(255,255,255,0.05); }
+
+        .cell { font-size: 15px; color: var(--text); padding-right: 8px; }
+        .cell-muted { color: var(--muted); font-size: 14px; }
+        .cell-mono { font-family: 'DM Mono', monospace; font-size: 15px; }
+
+        /* Action buttons */
+        .action-cell {
+            display: flex;
+            gap: 10px;
+        }
+
+        .action-btn {
+            padding: 8px 16px;
+            border-radius: 6px;
+            border: 1px solid #333;
+            background: #1a1a1a;
+            color: var(--muted);
+            font-size: 13px;
+            cursor: pointer;
+            font-family: 'DM Sans', sans-serif;
+            transition: background 0.15s, color 0.15s, border-color 0.15s;
+            white-space: nowrap;
+        }
+        .action-btn:hover { background: #242424; color: var(--text); border-color: #444; }
+        .action-btn.analyse-btn:hover { color: #7eb0d4; border-color: #2e5080; }
+        .action-btn.delete-btn { padding: 6px 10px; border-color: transparent; background: transparent; }
+        .action-btn.delete-btn:hover { color: var(--red); background: rgba(207,95,95,0.1); border-color: rgba(207,95,95,0.3); }
+
+        /* Empty state */
+        .empty-state {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 60px 20px;
+            color: var(--muted);
+            gap: 12px;
+            text-align: center;
+        }
+        .empty-state svg { width: 48px; height: 48px; opacity: 0.3; fill: var(--muted); }
+        .empty-state p   { font-size: 14px; line-height: 1.6; }
+        .empty-state a   { color: var(--gold); text-decoration: none; }
+        .empty-state a:hover { text-decoration: underline; }
+
+        /* Summary bar at top of table */
+        .summary-bar {
+            display: flex;
+            gap: 24px;
+            align-items: center;
+            padding: 14px 20px;
+            border-bottom: 1px solid var(--border);
+            background: #111;
+            flex-wrap: wrap;
+        }
+        .summary-stat { text-align: center; }
+        .summary-num  { font-family: 'Cinzel', serif; font-size: 26px; font-weight: 700; color: var(--gold); }
+        .summary-lbl  { font-size: 12px; letter-spacing: 1px; text-transform: uppercase; color: var(--muted); margin-top: 2px; }
+        .summary-divider { width: 1px; height: 32px; background: var(--border); }
+
+        /* Mobile-only elements hidden on desktop */
+        .mobile-row-top,
+        .mobile-row-meta,
+        .mobile-actions { display: none; }
+
+        /* ── Result Badges ── */
+        .result-badge {
+            display: inline-block;
+            padding: 3px 10px;
+            border-radius: 12px;
+            font-family: 'DM Mono', monospace;
+            font-size: 12px;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+        }
+        .badge-win  { background: rgba(76,175,125,0.15); border: 1px solid rgba(76,175,125,0.4); color: #4caf7d; }
+        .badge-loss { background: rgba(207,95,95,0.15);  border: 1px solid rgba(207,95,95,0.4);  color: #cf5f5f; }
+        .badge-draw { background: rgba(122,156,201,0.15); border: 1px solid rgba(122,156,201,0.4); color: #7a9cc9; }
+        .badge-other { background: #222; border: 1px solid #333; color: var(--muted); }
+
+        /* ── Mode Chips ── */
+        .mode-chip {
+            display: inline-block;
+            padding: 3px 8px;
+            border-radius: 10px;
+            font-size: 11px;
+            font-family: 'DM Mono', monospace;
+            letter-spacing: 0.3px;
+        }
+        .mode-ai   { background: rgba(201,168,76,0.1); border: 1px solid rgba(201,168,76,0.25); color: var(--gold); }
+        .mode-pass { background: rgba(100,120,160,0.1); border: 1px solid rgba(100,120,160,0.25); color: #8090b0; }
+
+        /* ── Custom Modal ── */
+        .custom-modal {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.82);
+            z-index: 9999;
+            align-items: center;
+            justify-content: center;
+            backdrop-filter: blur(4px);
+        }
+        .modal-content {
+            background: var(--surface2);
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            padding: 36px 40px;
+            width: 360px;
+            max-width: 90vw;
+            text-align: center;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.7);
+            animation: modal-in 0.2s ease;
+        }
+        @keyframes modal-in {
+            from { opacity: 0; transform: scale(0.94) translateY(8px); }
+            to   { opacity: 1; transform: scale(1)    translateY(0); }
+        }
+        .modal-content h3 {
+            font-family: 'Cinzel', serif;
+            color: var(--gold);
+            font-size: 20px;
+            letter-spacing: 2px;
+            margin-bottom: 12px;
+        }
+        .modal-content p {
+            color: var(--muted);
+            font-size: 14px;
+            line-height: 1.6;
+            margin-bottom: 4px;
+        }
+        .modal-buttons {
+            display: flex;
+            justify-content: center;
+            gap: 14px;
+            margin-top: 24px;
+            flex-wrap: wrap;
+        }
+        .btn-modal {
+            padding: 9px 22px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-family: 'DM Mono', monospace;
+            font-weight: 500;
+            font-size: 13px;
+            letter-spacing: 0.5px;
+            color: white;
+            transition: background 0.18s, transform 0.1s, box-shadow 0.18s;
+        }
+        .btn-modal:active { transform: scale(0.96); }
+        .btn-secondary { background: #2e2e2e; border: 1px solid #444; }
+        .btn-secondary:hover { background: #3a3a3a; border-color: var(--gold-dim); }
+        .btn-danger { background: var(--red); border: 1px solid #a00000; }
+        .btn-danger:hover { background: #e07070; box-shadow: 0 0 10px rgba(207,95,95,0.4); }
+    </style>
+
+    <!-- ── Mobile styles (max-width: 800px) ─────────────────────────────
+         Edit ONLY this block for mobile layout changes on history page.
+    ─────────────────────────────────────────────────────────────────── -->
+    <style media="screen and (max-width: 800px)">
+            .page { padding: 16px 12px 32px; }
+            .top-bar { flex-direction: row; align-items: center; gap: 10px; margin-bottom: 8px; }
+            .top-bar h1 { font-size: 22px; letter-spacing: 2px; }
+            .header-desc { font-size: 13px; margin-bottom: 16px; }
+            .filter-row { flex-wrap: wrap; gap: 6px; margin-bottom: 16px; }
+            .filter-chip { padding: 6px 14px; font-size: 10px; }
+
+            /* Summary bar stacks nicely */
+            .summary-bar { gap: 16px; padding: 12px 16px; }
+            .summary-num { font-size: 22px; }
+            .summary-lbl { font-size: 10px; }
+
+            /* Hide desktop table head */
+            .table-head { display: none; }
+
+            /* Each game row becomes a compact card */
+            .game-row {
+                display: flex;
+                flex-direction: column;
+                padding: 14px 16px;
+                gap: 0;
+                border-bottom: 1px solid #1a1a1a;
+                background: var(--surface);
+            }
+            .game-row:hover { background: rgba(255,255,255,0.03); }
+
+            /* Row top: # badge + players + result */
+            .mobile-row-top {
+                display: flex;
+                align-items: center;
+                gap: 10px;
+                margin-bottom: 8px;
+            }
+            .game-num-badge {
+                font-family: 'DM Mono', monospace;
+                font-size: 11px;
+                color: var(--muted);
+                background: #1a1a1a;
+                border: 1px solid #2a2a2a;
+                border-radius: 6px;
+                padding: 3px 7px;
+                flex-shrink: 0;
+            }
+            .mobile-players {
+                flex: 1;
+                min-width: 0;
+            }
+            .mobile-player-line {
+                font-size: 13px;
+                color: var(--text);
+                white-space: nowrap;
+                overflow: hidden;
+                text-overflow: ellipsis;
+                line-height: 1.5;
+            }
+            .mobile-player-label {
+                font-size: 10px;
+                color: var(--muted);
+                font-family: 'Cinzel', serif;
+                letter-spacing: 1px;
+                text-transform: uppercase;
+                margin-right: 4px;
+            }
+
+            /* Row bottom: meta chips + actions */
+            .mobile-row-meta {
+                display: flex;
+                align-items: center;
+                gap: 6px;
+                flex-wrap: wrap;
+                margin-bottom: 10px;
+            }
+            .meta-moves {
+                font-family: 'DM Mono', monospace;
+                font-size: 11px;
+                color: var(--muted);
+                background: #1a1a1a;
+                border: 1px solid #222;
+                border-radius: 8px;
+                padding: 2px 8px;
+            }
+
+            /* Hide desktop-only cells on mobile */
+            .cell { display: none !important; }
+            .action-cell { display: none !important; }
+
+            /* Show mobile card elements */
+            .mobile-row-top { display: flex; }
+            .mobile-row-meta { display: flex; }
+            .mobile-actions { display: flex; gap: 8px; }
+            .mobile-actions .action-btn {
+                flex: 1;
+                text-align: center;
+                padding: 9px 6px;
+                font-size: 12px;
+                border-radius: 8px;
+            }
+            .mobile-actions .delete-btn {
+                flex: 0 0 auto;
+                padding: 9px 12px;
+                border-radius: 8px;
+                background: transparent;
+                border: 1px solid #2a2a2a;
+                color: var(--muted);
+            }
+            .mobile-actions .delete-btn:hover {
+                background: rgba(207,95,95,0.1);
+                border-color: rgba(207,95,95,0.3);
+                color: var(--red);
+            }
+
+            .table-wrap { border-radius: 10px; }
+    </style>
+</head>
+<body>
+<div class="page">
+
+    <div class="top-bar">
+        <h1>GAME HISTORY</h1>
+        <button class="btn btn-secondary" onclick="window.location.href='/'">⬅ Home</button>
+    </div>
+    <div class="header-desc">Your games from this session — up to the last 50</div>
+
+    <div class="filter-row" id="filter-section" style="display:none;">
+        <div class="filter-chip active" id="filter-all" onclick="setFilter('all')">All Games</div>
+        <div class="filter-chip" id="filter-win" onclick="setFilter('win')">Wins</div>
+        <div class="filter-chip" id="filter-loss" onclick="setFilter('loss')">Losses</div>
+        <div class="filter-chip" id="filter-draw" onclick="setFilter('draw')">Draws</div>
+    </div>
+
+    <div class="table-wrap" id="table-wrap">
+        <div class="table-body" id="table-body">
+            <div class="empty-state">
+                <svg viewBox="0 0 24 24"><path d="M13 3a9 9 0 0 0-9 9H1l3.89 3.89.07.14L9 12H6c0-3.87 3.13-7 7-7s7 3.13 7 7-3.13 7-7 7c-1.93 0-3.68-.79-4.94-2.06l-1.42 1.42A8.954 8.954 0 0 0 13 21a9 9 0 0 0 0-18zm-1 5v5l4.28 2.54.72-1.21-3.5-2.08V8H12z"/></svg>
+                <p>No games yet this session.<br><a href="/">Play a game</a> and it will appear here.</p>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<div id="delete-modal" class="custom-modal">
+    <div class="modal-content">
+        <h3>Delete Game</h3>
+        <p>Are you sure you want to remove this game from your history?</p>
+        <div class="modal-buttons">
+            <button class="btn-modal btn-danger" onclick="confirmDelete()">Yes, Delete</button>
+            <button class="btn-modal btn-secondary" onclick="closeDeleteModal()">Cancel</button>
+        </div>
+    </div>
+</div>
+
+<script>
+let currentFilter = 'all';
+
+function setFilter(type) {
+    currentFilter = type;
+    document.querySelectorAll('.filter-chip').forEach(el => el.classList.remove('active'));
+    document.getElementById('filter-' + type).classList.add('active');
+    renderTable();
+}
+
+function resultBadge(result, mode) {
+    if (result === '1/2-1/2') return '<span class="result-badge badge-draw">Draw</span>';
+    if (result === '1-0')     return '<span class="result-badge badge-win">1–0</span>';
+    if (result === '0-1')     return '<span class="result-badge badge-loss">0–1</span>';
+    return '<span class="result-badge badge-other">' + (result || '—') + '</span>';
+}
+
+function modeChip(mode) {
+    if (mode === 'ai')            return '<span class="mode-chip mode-ai">vs AI</span>';
+    if (mode === 'pass_and_play') return '<span class="mode-chip mode-pass">Pass & Play</span>';
+    return '<span class="mode-chip">' + mode + '</span>';
+}
+
+function downloadPGN(pgn, index) {
+    const blob = new Blob([pgn], { type: 'application/x-chess-pgn' });
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    a.href     = url;
+    a.download = 'ghost_ai_game_' + (index + 1) + '.pgn';
+    a.click();
+    URL.revokeObjectURL(url);
+}
+
+// FIX: Use URL as fallback when localStorage is full or unavailable
+function sendToAnalysis(pgn) {
+    let stored = false;
+    try {
+        localStorage.setItem('ghost_ai_pgn_transfer', pgn);
+        stored = true;
+    } catch(e) {
+        console.warn('localStorage full, falling back to URL transfer:', e);
+    }
+    window.location.href = stored
+        ? '/analysis'
+        : '/analysis?pgn=' + encodeURIComponent(pgn);
+}
+
+function loadHistory() {
+    let history = [];
+    try {
+        history = JSON.parse(localStorage.getItem('ghost_history')) || [];
+    } catch(e) {}
+
+    window._history = history;
+    renderTable();
+}
+
+function confirmDelete() {
+    if (gameToDeleteIndex === -1) return;
+
+    // Remove game from local array
+    let history = window._history;
+    history.splice(gameToDeleteIndex, 1);
+
+    // FIX: Wrap setItem in try/catch to handle QuotaExceededError
+    try {
+        localStorage.setItem('ghost_history', JSON.stringify(history));
+    } catch(e) {
+        console.error('localStorage error while saving after delete:', e);
+    }
+
+    closeDeleteModal();
+    loadHistory(); // Reload the table instantly
+}
+
+function renderTable() {
+    const history = window._history || [];
+    const wrap    = document.getElementById('table-wrap');
+    const filterSection = document.getElementById('filter-section');
+
+    if (history.length === 0) {
+        filterSection.style.display = 'none';
+        wrap.innerHTML = `
+            <div class="table-body" id="table-body">
+                <div class="empty-state">
+                    <svg viewBox="0 0 24 24"><path d="M13 3a9 9 0 0 0-9 9H1l3.89 3.89.07.14L9 12H6c0-3.87 3.13-7 7-7s7 3.13 7 7-3.13 7-7 7c-1.93 0-3.68-.79-4.94-2.06l-1.42 1.42A8.954 8.954 0 0 0 13 21a9 9 0 0 0 0-18zm-1 5v5l4.28 2.54.72-1.21-3.5-2.08V8H12z"/></svg>
+                    <p>No games yet this session.<br><a href="/">Play a game</a> and it will appear here.</p>
+                </div>
+            </div>`;
+        return;
+    }
+
+    filterSection.style.display = 'flex';
+
+    // Apply filters based on Human's perspective
+    let filteredHistory = history.filter(g => {
+        if (currentFilter === 'all') return true;
+        if (currentFilter === 'draw') return g.result === '1/2-1/2';
+
+        const humanWon = (g.w_name === 'Human' && g.result === '1-0') || (g.b_name === 'Human' && g.result === '0-1');
+        const humanLost = (g.w_name === 'Human' && g.result === '0-1') || (g.b_name === 'Human' && g.result === '1-0');
+
+        if (currentFilter === 'win') return humanWon;
+        if (currentFilter === 'loss') return humanLost;
+        return true;
+    });
+
+    // Build summary bar using the FULL history
+    const wins   = history.filter(g => (g.w_name === 'Human' && g.result === '1-0') || (g.b_name === 'Human' && g.result === '0-1')).length;
+    const losses = history.filter(g => (g.w_name === 'Human' && g.result === '0-1') || (g.b_name === 'Human' && g.result === '1-0')).length;
+    const draws  = history.filter(g => g.result === '1/2-1/2').length;
+
+    const summaryHTML = `
+        <div class="summary-bar">
+            <div class="summary-stat">
+                <div class="summary-num">${history.length}</div>
+                <div class="summary-lbl">Games</div>
+            </div>
+            <div class="summary-divider"></div>
+            <div class="summary-stat">
+                <div class="summary-num" style="color:#4caf7d">${wins}</div>
+                <div class="summary-lbl">Your Wins</div>
+            </div>
+            <div class="summary-stat">
+                <div class="summary-num" style="color:#cf5f5f">${losses}</div>
+                <div class="summary-lbl">Your Losses</div>
+            </div>
+            <div class="summary-stat">
+                <div class="summary-num" style="color:#7a9cc9">${draws}</div>
+                <div class="summary-lbl">Draws</div>
+            </div>
+        </div>`;
+
+    const headHTML = `
+        <div class="table-head">
+            <span class="th">#</span>
+            <span class="th">White</span>
+            <span class="th">Black</span>
+            <span class="th">Result</span>
+            <span class="th">Moves</span>
+            <span class="th">Mode</span>
+            <span class="th">Actions</span>
+        </div>`;
+
+    let rowsHTML = filteredHistory.map((g) => {
+        const originalIndex = history.indexOf(g);
+        const num = history.length - originalIndex;
+
+        // Determine human result for badge color
+        const humanIsWhite = g.w_name === 'Human';
+        let badgeClass = 'badge-other';
+        if (g.result === '1/2-1/2') badgeClass = 'badge-draw';
+        else if ((humanIsWhite && g.result === '1-0') || (!humanIsWhite && g.result === '0-1')) badgeClass = 'badge-win';
+        else if ((humanIsWhite && g.result === '0-1') || (!humanIsWhite && g.result === '1-0')) badgeClass = 'badge-loss';
+
+        return `
+        <div class="game-row">
+            <!-- Desktop cells (hidden on mobile) -->
+            <span class="cell cell-muted" data-label="#">${num}</span>
+            <span class="cell" data-label="White">${escHtml(g.w_name)}</span>
+            <span class="cell" data-label="Black">${escHtml(g.b_name)}</span>
+            <span class="cell" data-label="Result">${resultBadge(g.result, g.mode)}</span>
+            <span class="cell cell-mono" data-label="Moves">${g.moves}</span>
+            <span class="cell" data-label="Mode">${modeChip(g.mode)}</span>
+            <span class="cell action-cell" data-label="Actions">
+                <button class="action-btn analyse-btn" onclick="sendToAnalysis(window._history[${originalIndex}].pgn)">🔍 Analyse</button>
+                <button class="action-btn" onclick="downloadPGN(window._history[${originalIndex}].pgn, ${originalIndex})">⬇ Download</button>
+                <button class="action-btn delete-btn" onclick="deleteGame(${originalIndex})" title="Delete">✖</button>
+            </span>
+
+            <!-- Mobile layout (hidden on desktop via CSS) -->
+            <div class="mobile-row-top">
+                <span class="game-num-badge">#${num}</span>
+                <div class="mobile-players">
+                    <div class="mobile-player-line"><span class="mobile-player-label">W</span>${escHtml(g.w_name)}</div>
+                    <div class="mobile-player-line"><span class="mobile-player-label">B</span>${escHtml(g.b_name)}</div>
+                </div>
+                <span class="result-badge ${badgeClass}">${g.result === '1/2-1/2' ? '½–½' : g.result === '1-0' ? '1–0' : g.result === '0-1' ? '0–1' : g.result || '—'}</span>
+            </div>
+            <div class="mobile-row-meta">
+                ${modeChip(g.mode)}
+                <span class="meta-moves">${g.moves} moves</span>
+            </div>
+            <div class="mobile-actions">
+                <button class="action-btn analyse-btn" onclick="sendToAnalysis(window._history[${originalIndex}].pgn)">🔍 Analyse</button>
+                <button class="action-btn" onclick="downloadPGN(window._history[${originalIndex}].pgn, ${originalIndex})">⬇ Download</button>
+                <button class="action-btn delete-btn" onclick="deleteGame(${originalIndex})" title="Delete">✖</button>
+            </div>
+        </div>`;
+    }).join('');
+
+    if (filteredHistory.length === 0) {
+        rowsHTML = `<div class="empty-state" style="padding: 40px 20px;"><p>No games match this filter.</p></div>`;
+    }
+
+    wrap.innerHTML = summaryHTML + headHTML + '<div class="table-body">' + rowsHTML + '</div>';
+}
+
+function escHtml(str) {
+    return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// Custom Modal Logic
+let gameToDeleteIndex = -1;
+
+function deleteGame(index) {
+    gameToDeleteIndex = index;
+    document.getElementById('delete-modal').style.display = 'flex';
+}
+
+function closeDeleteModal() {
+    document.getElementById('delete-modal').style.display = 'none';
+    gameToDeleteIndex = -1;
+}
+
+
+loadHistory();
+</script>
+</body>
+</html>

@@ -1,0 +1,27 @@
+#!/usr/bin/env bash
+# Render build script — runs before the app starts
+set -e
+
+echo "=== Installing Python dependencies ==="
+pip install -r requirements.txt
+
+echo "=== Downloading Stockfish ==="
+mkdir -p stockfish
+# Download official Stockfish Ubuntu binary
+wget -qO stockfish.tar.gz https://github.com/official-stockfish/Stockfish/releases/latest/download/stockfish-ubuntu-x86-64-avx2.tar.gz
+tar -xzf stockfish.tar.gz
+# Move binary to expected path
+find . -name "stockfish-ubuntu-x86-64-avx2" -type f -exec mv {} stockfish/stockfish \;
+chmod +x stockfish/stockfish
+rm -rf stockfish.tar.gz stockfish-ubuntu-*
+
+echo "=== Compiling NNUE probe library (libnnueprobe.so) ==="
+cd Chess_AI/src
+make clean 2>/dev/null || true
+make COMP=gcc
+ls -la libnnueprobe.so
+cd ../..
+
+echo "=== Build complete ==="
+echo "Stockfish: $(which stockfish || echo './stockfish/stockfish')"
+echo "NNUE lib:  Chess_AI/src/libnnueprobe.so"

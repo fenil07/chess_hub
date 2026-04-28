@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chess Hub – Play</title>
+    <meta name="description" content="Play chess against Chess Hub – choose difficulty from easy neural net to deep search">
+    <link rel="stylesheet" href="https://unpkg.com/@chrisoakman/chessboardjs@1.0.0/dist/chessboard-1.0.0.min.css">
+
+    <!-- ── CSS: 3-file split ──────────────────────────────────────────────
+         style.base.css    → tokens, resets, shared components (all screens)
+         style.desktop.css → layout for screens ≥ 781px
+         style.mobile.css  → layout for screens ≤ 780px
+    ─────────────────────────────────────────────────────────────────────── -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.base.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.desktop.css') }}" media="screen and (min-width: 781px)">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.mobile.css') }}"  media="screen and (max-width: 780px)">
+
+    <!-- ── Page-specific overrides (not layout — safe on all screens) ─── -->
+    <style>
+        /* Legacy move-row grid variant used by game.js — kept for compatibility */
+        .move-row {
+            display: grid;
+            grid-template-columns: 40px 1fr 1fr;
+            border-bottom: 1px solid #1c1c1c;
+            font-family: 'Source Code Pro', monospace;
+            font-size: 13px;
+            width: 100%;
+            gap: 0;
+            padding: 0;
+        }
+        .move-row:nth-child(even) { background: #111; }
+
+        .move-num {
+            background: #0a0a0a;
+            color: #8a6e2e;
+            padding: 7px 6px;
+            text-align: right;
+            border-right: 1px solid #1c1c1c;
+            font-size: 11px;
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+        }
+
+        .move-san {
+            padding: 7px 10px;
+            color: #e0e0e0;
+            cursor: pointer;
+            transition: background 0.15s;
+        }
+        .move-san:hover { background: rgba(201, 168, 76, 0.15); color: #c9a84c; }
+        .move-san:empty { pointer-events: none; }
+        .move-san.active-replay {
+            background: rgba(201, 168, 76, 0.22) !important;
+            color: var(--gold) !important;
+        }
+    </style>
+</head>
+<body>
+    <div class="main-wrapper">
+        <div class="game-layout">
+
+            <div class="board-container">
+
+                <div style="width:100%; display:flex; align-items:center; justify-content:space-between;">
+                    <div id="black-name"
+                         class="player-label"
+                         style="flex:1"
+                         data-is-ai="false"
+                         data-name="Black">Black</div>
+                </div>
+
+                <div id="clock-section">
+                    <div style="text-align:center; flex:1;">
+                        <div class="clock-label">White</div>
+                        <div class="clock-box" id="clock-white">00:00</div>
+                    </div>
+                    <div style="color:var(--text-dim); font-size:12px; letter-spacing:1px;">vs</div>
+                    <div style="text-align:center; flex:1;">
+                        <div class="clock-label">Black</div>
+                        <div class="clock-box" id="clock-black">00:00</div>
+                    </div>
+                </div>
+
+                <div id="board" style="max-width:100%;"></div>
+
+                <div class="board-footer">
+                    <div id="white-name"
+                         class="player-label"
+                         data-is-ai="false"
+                         data-name="White">White</div>
+
+                    <div class="button-row">
+                        <button class="btn-game btn-secondary" onclick="handleHomeClick()">⬅ Home</button>
+                        <button class="btn-game btn-secondary"
+                                onclick="board.flip()">⇅ Flip</button>
+                        <button class="btn-game btn-danger"
+                                onclick="showResignModal()">⚑ Resign</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="control-panel">
+                <h3 class="log-heading">Move Log
+                    <span style="font-size:10px; color:var(--text-dim); font-family:'Source Code Pro',monospace; font-weight:400; letter-spacing:1px; margin-left:8px;">click move to replay</span>
+                </h3>
+                <div class="move-log-wrapper">
+                    <div id="move-log" class="move-log-container"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="resign-modal" class="custom-modal">
+        <div class="modal-content">
+            <h3>Resign?</h3>
+            <p>Are you sure you want to end the game?</p>
+            <div class="modal-buttons">
+                <button class="btn-game btn-danger"
+                        onclick="executeResign()">Yes, Resign</button>
+                <button class="btn-game btn-secondary"
+                        onclick="closeResignModal()">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="result-modal" class="custom-modal">
+        <div class="modal-content">
+            <h3 id="result-title">Game Over</h3>
+            <p id="result-body"></p>
+            <div class="modal-buttons">
+                <button class="btn-game btn-secondary"
+                        onclick="window._gameOver = true; goToHome()">⬅ Return Home</button>
+                <button class="btn-game btn-download"
+                        onclick="downloadPGN()">⬇ Download PGN</button>
+                <button class="btn-game btn-analyse"
+                        onclick="window._gameOver = true; openAnalysis()">🔍 Analyse</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <script src="https://unpkg.com/@chrisoakman/chessboardjs@1.0.0/dist/chessboard-1.0.0.min.js"></script>
+    <script src="{{ url_for('static', filename='js/game.js') }}"></script>
+    <script>
+        $(document).ready(function () {
+            startNewGame().then(() => {
+                const urlParams = new URLSearchParams(window.location.search);
+                const mode  = urlParams.get('mode')  || 'pass_and_play';
+                const color = urlParams.get('color') || 'white';
+
+                if (mode === 'ai') {
+                    const aiIsBlack = (color === 'white');
+                    const aiEl = document.getElementById(aiIsBlack ? 'black-name' : 'white-name');
+                    aiEl.dataset.isAi = 'true';
+                    aiEl.dataset.name = 'Chess Hub';
+                }
+            });
+        });
+    </script>
+</body>
+</html>

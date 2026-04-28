@@ -1,0 +1,1331 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ghost AI – Puzzles</title>
+    <meta name="description" content="Solve chess puzzles rated by difficulty – improve your tactical vision with over 3 million puzzles">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=Source+Code+Pro:wght@400;500&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://unpkg.com/@chrisoakman/chessboardjs@1.0.0/dist/chessboard-1.0.0.min.css">
+    <!-- ── CSS: 3-file split ──────────────────────────────────────────────
+         style.base.css    → tokens, resets, shared components (all screens)
+         style.desktop.css → layout for screens ≥ 781px
+         style.mobile.css  → layout for screens ≤ 780px
+    ─────────────────────────────────────────────────────────────────────── -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.base.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.desktop.css') }}" media="screen and (min-width: 781px)">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.mobile.css') }}"  media="screen and (max-width: 780px)">
+
+    <style>
+        /* ── Page base ─────────────────────────────────────────────── */
+        body { align-items: flex-start; padding: 10px 12px; overflow-x: hidden; height: 100vh; overflow-y: hidden; }
+
+        /* ── 3-column layout: left-panel | board | right-panel ──────── */
+        .puzzle-layout {
+            display: grid; grid-template-columns: 220px 1fr 250px; grid-template-rows: auto;
+            gap: 14px; width: 100%; max-width: 1300px; margin: 0 auto; align-items: start;
+            height: calc(100vh - 20px);
+        }
+
+        /* ── Shared card style ──────────────────────────────────────── */
+        .pcard {
+            background: var(--panel); border: 1px solid var(--border); border-radius: 14px;
+            padding: 16px 16px; box-shadow: var(--shadow);
+        }
+
+        .pcard-title {
+            font-family: 'Cinzel', serif; font-size: 12px; letter-spacing: 3px; text-transform: uppercase;
+            color: var(--gold); margin-bottom: 14px; padding-bottom: 8px; border-bottom: 1px solid #252525;
+        }
+
+        /* ══════════════════════════════════════════════════════════════
+           LEFT PANEL
+        ══════════════════════════════════════════════════════════════ */
+        .left-panel { display: flex; flex-direction: column; gap: 14px; position: sticky; top: 12px; }
+
+        /* Rating HUD */
+        .rating-hud { text-align: center; padding: 20px 16px 16px; }
+        .hud-label { font-family: 'Cinzel', serif; font-size: 9px; letter-spacing: 3px; text-transform: uppercase; color: var(--text-dim); margin-bottom: 6px; }
+        .my-rating { font-family: 'Cinzel', serif; font-size: 52px; font-weight: 700; color: var(--gold); letter-spacing: 2px; line-height: 1; text-shadow: 0 0 40px rgba(201,168,76,0.35); transition: color 0.4s; }
+
+        .rating-delta { font-family: 'Source Code Pro', monospace; font-size: 14px; min-height: 22px; margin-top: 5px; transition: opacity 0.5s; }
+        .rating-delta.positive { color: #6dbf6d; }
+        .rating-delta.negative { color: #e05555; }
+        .rating-delta.hidden { opacity: 0; }
+
+        .streak-row { display: flex; align-items: center; justify-content: center; gap: 6px; margin-top: 8px; min-height: 26px; }
+        .streak-badge { display: flex; align-items: center; gap: 5px; font-family: 'Source Code Pro', monospace; font-size: 12px; color: #f0a000; background: rgba(240,160,0,0.1); border: 1px solid rgba(240,160,0,0.25); border-radius: 20px; padding: 4px 12px; transition: opacity 0.3s; }
+        .streak-badge.hidden { opacity: 0; pointer-events: none; }
+
+        .timer-display { font-family: 'Source Code Pro', monospace; font-size: 18px; font-weight: 500; color: var(--text-dim); letter-spacing: 3px; text-align: center; margin-top: 6px; }
+        .timer-display.timer-low { color: #e05555; animation: clock-pulse 0.6s infinite; }
+
+        /* Puzzle info rows */
+        .info-row { display: flex; justify-content: space-between; align-items: center; padding: 7px 0; border-bottom: 1px solid #222; font-size: 14px; }
+        .info-row:last-child { border-bottom: none; }
+        .info-label { font-family: 'Source Code Pro', monospace; color: var(--text-dim); font-size: 13px; }
+        .info-value { font-family: 'Cinzel', serif; color: var(--text); font-size: 14px; text-align: right; max-width: 55%; word-break: break-word; }
+
+        /* Themes chips */
+        .themes-wrap { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 10px; }
+        .theme-chip { padding: 4px 10px; border-radius: 10px; font-family: 'Source Code Pro', monospace; font-size: 11px; background: rgba(201,168,76,0.07); border: 1px solid rgba(201,168,76,0.16); color: var(--text-dim); }
+
+        /* Feedback box */
+        .feedback-box { padding: 14px 14px; min-height: 72px; transition: border-color 0.3s; }
+        .feedback-box.correct { border-color: #3a7a3a; }
+        .feedback-box.wrong { border-color: #7a2a2a; }
+        .feedback-box.solved { border-color: var(--gold); }
+        .feedback-title { font-family: 'Cinzel', serif; font-size: 14px; letter-spacing: 1.5px; text-transform: uppercase; margin-bottom: 5px; }
+        .feedback-title.correct { color: #6dbf6d; }
+        .feedback-title.wrong { color: #e05555; }
+        .feedback-title.solved { color: var(--gold); }
+        .feedback-title.neutral { color: var(--text-dim); }
+        .feedback-body { font-family: 'Source Code Pro', monospace; font-size: 13px; color: var(--text-dim); line-height: 1.6; }
+
+        /* Move trail */
+        .move-trail { display: flex; flex-wrap: wrap; gap: 4px; }
+        .trail-move { font-family: 'Source Code Pro', monospace; font-size: 13px; padding: 4px 9px; border-radius: 4px; background: var(--panel2); border: 1px solid var(--border); color: var(--text-dim); }
+        .trail-move.correct-move { background: rgba(60,120,60,0.2); border-color: #3a7a3a; color: #8dd88d; }
+        .trail-move.wrong-move { background: rgba(120,40,40,0.2); border-color: #7a2a2a; color: #e08080; }
+        .trail-move.reply-move { border-color: #444; color: var(--text-dim); }
+
+        /* ══════════════════════════════════════════════════════════════
+           BOARD COLUMN (middle)
+        ══════════════════════════════════════════════════════════════ */
+        .board-col { display: flex; flex-direction: column; align-items: center; gap: 10px; }
+        .board-wrap { background: var(--panel); border: 1px solid var(--border); border-radius: 16px; padding: 14px 14px 10px; box-shadow: var(--shadow); width: 100%; position: relative; }
+
+        .turn-banner { font-family: 'Cinzel', serif; font-size: 12px; letter-spacing: 2px; text-transform: uppercase; color: var(--text-dim); text-align: center; padding: 4px 0 10px; }
+        .turn-banner.white-turn { color: #d4d4d4; }
+        .turn-banner.black-turn { color: #a0a0a0; }
+        .turn-banner.solved-turn { color: var(--gold); }
+
+        /* Board & Eval layout */
+        .board-and-eval { display: flex; align-items: stretch; justify-content: center; }
+        #board {
+            width: min(calc(100vh - 140px), calc(100vw - 520px)) !important;
+            height: min(calc(100vh - 140px), calc(100vw - 520px)) !important;
+            aspect-ratio: 1/1;
+        }
+
+        /* Eval Bar */
+        .eval-wrap { display: none; flex-direction: column; align-items: center; gap: 4px; margin-right: 12px; padding-top: 2px; }
+        .eval-label { font-family: 'Source Code Pro', monospace; font-size: 10px; color: var(--text-dim); letter-spacing: 1px; }
+        .eval-bar-outer { width: 16px; height: min(calc(100vh - 180px), calc(100vw - 560px)); background: #1a1a1a; border: 1px solid var(--border); border-radius: 6px; overflow: hidden; display: flex; flex-direction: column; }
+        .eval-bar-black { background: #222; transition: flex 0.5s ease; }
+        .eval-bar-white { background: #e8e8e8; transition: flex 0.5s ease; }
+        .eval-score { font-family: 'Source Code Pro', monospace; font-size: 10px; color: var(--text-dim); text-align: center; }
+
+        .board-actions { display: flex; gap: 8px; margin-top: 10px; justify-content: center; flex-wrap: wrap; }
+
+        .active-btn { background: rgba(201,168,76,0.15) !important; color: var(--gold) !important; border-color: var(--gold) !important; }
+
+        /* ══════════════════════════════════════════════════════════════
+           RIGHT PANEL — settings always visible, no scroll
+        ══════════════════════════════════════════════════════════════ */
+        .right-panel { display: flex; flex-direction: column; gap: 14px; position: sticky; top: 12px; }
+
+        /* Toggle switch */
+        .toggle { position: relative; width: 40px; height: 22px; flex-shrink: 0; }
+        .toggle input { opacity: 0; width: 0; height: 0; position: absolute; }
+        .toggle-slider { position: absolute; inset: 0; background: #2a2a2a; border-radius: 22px; cursor: pointer; transition: background 0.2s; border: 1px solid #3a3a3a; }
+        .toggle-slider::before { content: ''; position: absolute; width: 16px; height: 16px; left: 2px; top: 2px; background: #666; border-radius: 50%; transition: transform 0.2s, background 0.2s; }
+        .toggle input:checked + .toggle-slider { background: rgba(201,168,76,0.15); border-color: var(--gold-dim); }
+        .toggle input:checked + .toggle-slider::before { transform: translateX(18px); background: var(--gold); }
+
+        .setting-row { display: flex; align-items: center; justify-content: space-between; padding: 6px 0; }
+        .setting-label { font-family: 'Source Code Pro', monospace; font-size: 13px; color: var(--text-dim); padding-right: 8px; }
+
+        /* Rating chips */
+        .rating-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px; margin-top: 6px; }
+        .r-chip { font-family: 'Cinzel', serif; font-size: 15px; font-weight: 600; padding: 9px 4px; border-radius: 8px; border: 1px solid var(--border); background: #1a1a1a; color: var(--text-dim); cursor: pointer; text-align: center; transition: border-color 0.15s, color 0.15s, background 0.15s; letter-spacing: 0.5px; }
+        .r-chip:hover { border-color: var(--gold-dim); color: var(--text); }
+        .r-chip.active { border-color: var(--gold); background: rgba(201,168,76,0.12); color: var(--gold); }
+
+        .setting-divider { border: none; border-top: 1px solid #252525; margin: 8px 0; }
+
+        .theme-select { width: 100%; background: #1a1a1a; border: 1px solid var(--border); border-radius: 6px; color: var(--text); font-family: 'Source Code Pro', monospace; font-size: 13px; padding: 10px 10px; margin-top: 6px; outline: none; cursor: pointer; }
+        .theme-select:focus { border-color: var(--gold-dim); }
+
+        /* ── Square highlights ──────────────────────────────────────── */
+        .selected-square { background-color: rgba(255,255,255,0.08) !important; box-shadow: inset 0 0 10px 3px var(--gold) !important; }
+        .legal-highlight { background-color: rgba(201,168,76,0.12) !important; box-shadow: inset 0 0 0 3px rgba(201,168,76,0.35) !important; }
+        .check-square { background-color: rgba(255,40,40,0.5) !important; box-shadow: inset 0 0 16px 6px rgba(139,0,0,0.8) !important; }
+        .hint-square { background-color: rgba(201,168,76,0.25) !important; box-shadow: inset 0 0 0 3px rgba(201,168,76,0.55) !important; }
+        .correct-from, .correct-to { background-color: rgba(60,180,60,0.25) !important; box-shadow: inset 0 0 0 3px rgba(60,180,60,0.5) !important; }
+        .wrong-from, .wrong-to { background-color: rgba(220,50,50,0.25) !important; box-shadow: inset 0 0 0 3px rgba(220,50,50,0.5) !important; }
+        .last-move-from, .last-move-to { background-color: rgba(201,168,76,0.13) !important; }
+
+        /* ── Inline Horizontal Promotion Menu ───────────────────────── */
+        .promo-backdrop {
+            position: fixed;
+            inset: 0;
+            z-index: 9998;
+            background: transparent;
+            display: none;
+        }
+
+        .inline-promo {
+            position: absolute;
+            display: none; /* toggled to flex via JS */
+            flex-direction: row;
+            background: var(--panel2);
+            border: 2px solid var(--gold);
+            border-radius: 8px;
+            box-shadow: 0 12px 30px rgba(0,0,0,0.8);
+            z-index: 9999;
+            padding: 5px;
+            gap: 5px;
+            width: max-content;
+            animation: pop-in 0.15s cubic-bezier(0.18, 0.89, 0.32, 1.28);
+        }
+
+        @keyframes pop-in {
+            from { transform: scale(0.8); opacity: 0; }
+            to { transform: scale(1); opacity: 1; }
+        }
+
+        .inline-promo-piece {
+            width: 48px; height: 48px;
+            background: #111;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            cursor: pointer;
+            transition: background 0.15s, border-color 0.15s, transform 0.1s;
+            display: flex; align-items: center; justify-content: center;
+            flex-shrink: 0;
+        }
+
+        .inline-promo-piece:hover {
+            background: #242010;
+            border-color: var(--gold);
+            transform: scale(1.08);
+        }
+
+        .inline-promo-piece img {
+            width: 40px; height: 40px; pointer-events: none;
+        }
+
+        /* ── Mobile Horizontal Eval Bar (shown below board in analysis mode) ── */
+        .eval-mobile-bar-puzzle {
+            display: none; /* only shown when analysisMode is active on mobile */
+            align-items: center;
+            gap: 8px;
+            width: 100%;
+            padding: 6px 0 2px;
+        }
+        .eval-score-mob {
+            font-family: 'Source Code Pro', monospace;
+            font-size: 12px;
+            color: var(--text-dim);
+            min-width: 36px;
+            text-align: center;
+            flex-shrink: 0;
+        }
+        .eval-bar-h-outer {
+            flex: 1;
+            height: 10px;
+            background: #1a1a1a;
+            border: 1px solid var(--border);
+            border-radius: 5px;
+            overflow: hidden;
+            display: flex;
+            flex-direction: row;
+        }
+        .eval-bar-h-black {
+            height: 100%;
+            background: #333;
+            transition: width 0.5s ease;
+            flex-shrink: 0;
+        }
+        .eval-bar-h-white {
+            height: 100%;
+            background: #e8e8e8;
+            transition: width 0.5s ease;
+            flex: 1;
+        }
+
+        /* ── Puzzle Analysis Move Log ── */
+        .puzzle-move-log-wrap {
+            display: none; /* shown by JS when analysis is toggled on */
+            width: 100%;
+            background: var(--panel);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            overflow: hidden;
+            margin-top: 8px;
+        }
+        .puzzle-move-log-header {
+            font-family: 'Cinzel', serif;
+            font-size: 11px;
+            letter-spacing: 2px;
+            color: var(--gold);
+            text-transform: uppercase;
+            padding: 10px 14px;
+            border-bottom: 1px solid var(--border);
+            background: var(--panel2);
+        }
+        .puzzle-move-log-scroll {
+            max-height: 180px;
+            overflow-y: auto;
+            padding: 6px 0;
+            -webkit-overflow-scrolling: touch;
+        }
+        .puzzle-move-log-scroll::-webkit-scrollbar { width: 4px; }
+        .puzzle-move-log-scroll::-webkit-scrollbar-track { background: transparent; }
+        .puzzle-move-log-scroll::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+        .pml-row {
+            display: grid;
+            grid-template-columns: 32px 1fr 1fr;
+            padding: 1px 8px;
+        }
+        .pml-num {
+            font-size: 10px;
+            color: var(--gold-dim);
+            font-family: 'Source Code Pro', monospace;
+            padding: 5px 4px;
+            text-align: right;
+        }
+        .pml-cell {
+            font-family: 'Source Code Pro', monospace;
+            font-size: 12px;
+            padding: 4px 8px;
+            border-radius: 4px;
+            color: var(--text);
+        }
+    </style>
+
+    <!-- ── Mobile styles for puzzle page ────────────────────────────────
+         Edit ONLY this block for mobile layout changes on puzzle page.
+         Breakpoint 1: ≤ 1000px  (tablet + phone — stack layout)
+         Breakpoint 2: ≤  480px  (small phones — tighter sizing)
+    ─────────────────────────────────────────────────────────────────── -->
+    <style media="screen and (max-width: 1000px)">
+        /* ── Tablet / phone: single column layout ── */
+        body { overflow-y: auto; height: auto; padding: 8px; }
+        .puzzle-layout { grid-template-columns: 1fr; height: auto; gap: 10px; }
+        .left-panel, .right-panel { position: static; flex-direction: row; flex-wrap: wrap; gap: 10px; }
+        .left-panel .pcard, .right-panel .pcard { flex: 1; min-width: 200px; }
+
+            body { overflow-y: auto; height: auto; padding: 8px; }
+            .puzzle-layout { grid-template-columns: 1fr; height: auto; gap: 10px; }
+            .left-panel, .right-panel { position: static; flex-direction: row; flex-wrap: wrap; gap: 10px; }
+            .left-panel .pcard, .right-panel .pcard { flex: 1; min-width: 200px; }
+
+            /* Board bounded to viewport — never overflow */
+            #board {
+                width: min(calc(100vw - 48px), 480px) !important;
+                height: min(calc(100vw - 48px), 480px) !important;
+                max-width: calc(100vw - 48px) !important;
+                max-height: calc(100vw - 48px) !important;
+            }
+
+            /* On mobile: hide the vertical eval bar beside the board,
+               show the horizontal one below instead */
+            .eval-wrap { display: none !important; }
+            .board-and-eval { justify-content: center; }
+
+            .board-wrap { padding: 10px 10px 8px; overflow: hidden; }
+            .board-actions { flex-wrap: wrap; gap: 8px; justify-content: center; }
+            .btn-game { padding: 10px 14px; font-size: 13px; }
+    </style>
+    <style media="screen and (max-width: 480px)">
+        /* ── Small phones: tighter board and buttons ── */
+
+            #board {
+                width: calc(100vw - 36px) !important;
+                height: calc(100vw - 36px) !important;
+            }
+            .board-wrap { padding: 8px 8px 6px; }
+            .btn-game { padding: 8px 10px; font-size: 12px; }
+
+            .inline-promo-piece { width: 44px; height: 44px; }
+            .inline-promo-piece img { width: 36px; height: 36px; }
+    </style>
+</head>
+<body>
+<div class="puzzle-layout">
+
+    <div class="left-panel">
+
+        <div class="pcard rating-hud">
+            <div class="hud-label">Your Rating</div>
+            <div class="my-rating" id="my-rating">{{ initial_rating|default(1200) }}</div>
+            <div class="rating-delta hidden" id="rating-delta">+0</div>
+            <div class="streak-row">
+                <span class="streak-badge hidden" id="streak-badge">🔥 <span id="streak-count">0</span> streak</span>
+            </div>
+            <div class="timer-display" id="timer-display">00:00</div>
+        </div>
+
+        <div class="pcard" id="puzzle-info-card">
+            <div class="pcard-title">Puzzle Info</div>
+            <div class="info-row">
+                <span class="info-label">Puzzle Rating</span>
+                <span class="info-value" id="info-rating">—</span>
+            </div>
+            <div class="themes-wrap" id="themes-wrap"></div>
+        </div>
+
+        <div class="pcard feedback-box" id="feedback-box">
+            <div class="feedback-title neutral" id="feedback-title">Find the best move</div>
+            <div class="feedback-body" id="feedback-body">Click a piece to make your move.</div>
+            <div class="move-trail" id="move-trail" style="margin-top:8px;"></div>
+        </div>
+
+    </div>
+
+    <div class="board-col">
+        <div class="board-wrap">
+            <div id="turn-banner" class="turn-banner">Loading puzzle…</div>
+
+            <div class="board-and-eval">
+                <div class="eval-wrap" id="eval-wrap">
+                    <div class="eval-label">+∞</div>
+                    <div class="eval-bar-outer">
+                        <div class="eval-bar-black" id="eval-black" style="flex:1"></div>
+                        <div class="eval-bar-white" id="eval-white" style="flex:1"></div>
+                    </div>
+                    <div class="eval-label">−∞</div>
+                    <div class="eval-score" id="eval-score-label">0.0</div>
+                </div>
+                <div id="board"></div>
+            </div>
+
+            <div class="board-actions">
+                <button class="btn-game btn-secondary" onclick="window.location='/'">⬅ Home</button>
+                <button class="btn-game btn-secondary" onclick="flipBoard()">⇅ Flip</button>
+                <button class="btn-game btn-secondary" id="btn-hint" onclick="showHint()">💡 Hint</button>
+
+                <button class="btn-game btn-secondary" id="btn-retry" onclick="replayPuzzle()" style="display:none">↺ Retry</button>
+                <button class="btn-game btn-secondary" id="btn-analyse" onclick="toggleAnalysis()" style="display:none">🔍 Analyse</button>
+                <button class="btn-game btn-secondary" id="btn-undo" onclick="undoMove()" style="display:none">↶ Undo</button>
+
+                <button class="btn-game" id="btn-next"
+                        style="display:none; background:var(--gold); color:#111; font-weight:700;"
+                        onclick="loadNextPuzzle()">▶ Next</button>
+            </div>
+
+            <div class="eval-mobile-bar-puzzle" id="eval-mobile-bar-puzzle">
+                <span class="eval-score-mob" id="puzzle-eval-score-mob">0.0</span>
+                <div class="eval-bar-h-outer">
+                    <div class="eval-bar-h-black" id="puzzle-eval-black-mob" style="width:50%"></div>
+                    <div class="eval-bar-h-white" id="puzzle-eval-white-mob"></div>
+                </div>
+            </div>
+
+            <div class="puzzle-move-log-wrap" id="puzzle-move-log-wrap">
+                <div class="puzzle-move-log-header">Analysis Move Log</div>
+                <div class="puzzle-move-log-scroll" id="puzzle-move-log-scroll"></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="right-panel">
+
+        <div class="pcard">
+            <div class="pcard-title">Settings</div>
+
+            <div class="setting-row">
+                <span class="setting-label">Rated Puzzles & Streak</span>
+                <label class="toggle">
+                    <input type="checkbox" id="tog-rated" checked>
+                    <span class="toggle-slider"></span>
+                </label>
+            </div>
+            <div class="setting-row">
+                <span class="setting-label">Auto-advance after solve</span>
+                <label class="toggle">
+                    <input type="checkbox" id="tog-auto" checked>
+                    <span class="toggle-slider"></span>
+                </label>
+            </div>
+
+            <hr class="setting-divider">
+
+            <div class="setting-label" style="margin-bottom:2px;">Puzzle Rating Band</div>
+            <div class="rating-grid" id="rating-grid">
+                <div class="r-chip" data-rating="800">800</div>
+                <div class="r-chip" data-rating="1000">1000</div>
+                <div class="r-chip" data-rating="1200">1200</div>
+                <div class="r-chip" data-rating="1500">1500</div>
+                <div class="r-chip" data-rating="1800">1800</div>
+                <div class="r-chip" data-rating="2000">2000</div>
+                <div class="r-chip" data-rating="2200">2200</div>
+                <div class="r-chip active" data-rating="auto">Auto</div>
+            </div>
+
+            <hr class="setting-divider">
+
+            <div class="setting-label">Filter by Theme</div>
+            <select class="theme-select" id="theme-select">
+                <option value="">All Themes</option>
+            </select>
+
+        </div>
+    </div>
+</div>
+
+<div id="promo-backdrop" class="promo-backdrop" onclick="cancelPromotion()">
+    <div id="inline-promo" class="inline-promo" onclick="event.stopPropagation()">
+        </div>
+</div>
+
+
+<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+<script src="https://unpkg.com/@chrisoakman/chessboardjs@1.0.0/dist/chessboard-1.0.0.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/chess.js/0.10.3/chess.min.js"></script>
+
+<script>
+// ═══════════════════════════════════════════════════════════════════════
+//  State
+// ═══════════════════════════════════════════════════════════════════════
+let board        = null;
+let game         = new Chess();
+let puzzle       = null;          // active puzzle object
+let solutionIdx  = 0;
+let playerColor  = 'white';
+let solved       = false;
+let failed       = false;
+
+let hintsUsedCount   = 0;
+let currentHintLevel = 0; // Tracks step 1 (piece) vs step 2 (move)
+
+let myRating = (function() {
+    try {
+        const saved = localStorage.getItem('ghost_puzzle_rating');
+        if (saved) return parseInt(saved);
+    } catch(e) {}
+    return {{ initial_rating|default(1200) }};
+})();
+let timerSecs    = 0;
+let timerInterval = null;
+let targetRating  = 'auto';
+let seenIds       = [];           // global seen list
+let submittedPuzzles = new Set(); // Prevent multiple rating drops per puzzle
+
+let isLoadingPuzzle = false;
+let analysisMode    = false;
+
+// Edge Case Locks & Intercepts
+let isAnimating   = false;
+let puzzleIsRated = true;
+let pendingPromo  = null; // Temporarily stores move data while waiting for user to select promotion piece
+
+// Selection variables for click-to-move
+let selectedSquare = null;
+let validMovesForPiece = [];
+
+// Universal Check Highlight Function
+function updateCheckHighlight(chessInstance) {
+    document.querySelectorAll('.check-square').forEach(sq => sq.classList.remove('check-square'));
+    if (chessInstance.in_check()) {
+        const turnColor = chessInstance.turn();
+        const b8 = chessInstance.board();
+        const files = 'abcdefgh';
+        for (let r = 0; r < 8; r++) {
+            for (let c = 0; c < 8; c++) {
+                const piece = b8[r][c];
+                if (piece && piece.type === 'k' && piece.color === turnColor) {
+                    const sq = files[c] + (8 - r);
+                    const el = document.querySelector(`.square-${sq}`);
+                    if (el) el.classList.add('check-square');
+                    return;
+                }
+            }
+        }
+    }
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+//  Rating animation
+// ═══════════════════════════════════════════════════════════════════════
+function animateRating(newVal, delta) {
+    const el    = document.getElementById('my-rating');
+    const dEl   = document.getElementById('rating-delta');
+
+    // Only animate if the puzzle WAS rated when it started AND it actually changed
+    if (!puzzleIsRated || delta === 0) {
+        dEl.classList.add('hidden');
+        return;
+    }
+
+    const start = parseInt(el.textContent) || myRating;
+    const diff  = newVal - start;
+    let step    = 0;
+    const iv    = setInterval(() => {
+        step++;
+        el.textContent = Math.round(start + diff * step / 20);
+        if (step >= 20) { clearInterval(iv); el.textContent = newVal; }
+    }, 25);
+    dEl.textContent = (delta > 0 ? '+' : '') + delta;
+    dEl.className   = 'rating-delta ' + (delta > 0 ? 'positive' : 'negative');
+    setTimeout(() => dEl.classList.add('hidden'), 3200);
+    myRating = newVal;
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+//  Timer
+// ═══════════════════════════════════════════════════════════════════════
+function startTimer() {
+    clearInterval(timerInterval);
+    timerSecs = 0;
+    const el = document.getElementById('timer-display');
+    el.className = 'timer-display';
+    timerInterval = setInterval(() => {
+        timerSecs++;
+        const m = String(Math.floor(timerSecs / 60)).padStart(2, '0');
+        const s = String(timerSecs % 60).padStart(2, '0');
+        el.textContent = m + ':' + s;
+        if (timerSecs > 60) el.className = 'timer-display timer-low';
+    }, 1000);
+}
+function stopTimer() { clearInterval(timerInterval); }
+
+// ═══════════════════════════════════════════════════════════════════════
+//  Highlights
+// ═══════════════════════════════════════════════════════════════════════
+function clearHighlights() {
+    document.querySelectorAll('.square-55d63').forEach(sq => {
+        sq.classList.remove(
+            'hint-square','correct-from','correct-to',
+            'wrong-from','wrong-to','last-move-from','last-move-to',
+            'selected-square','legal-highlight','check-square'
+        );
+    });
+}
+
+function clearSelectionHighlights() {
+    document.querySelectorAll('.square-55d63').forEach(sq => {
+        sq.classList.remove('selected-square', 'legal-highlight');
+    });
+}
+
+function hl(from, to, cls1, cls2) {
+    const f = document.querySelector(`.square-${from}`);
+    const t = document.querySelector(`.square-${to}`);
+    if (f) f.classList.add(cls1);
+    if (t) t.classList.add(cls2 || cls1);
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+//  Move trail
+// ═══════════════════════════════════════════════════════════════════════
+function addTrail(san, cls) {
+    const chip = document.createElement('span');
+    chip.className = `trail-move ${cls}`;
+    chip.textContent = san;
+    document.getElementById('move-trail').appendChild(chip);
+}
+function clearTrail() { document.getElementById('move-trail').innerHTML = ''; }
+
+// ═══════════════════════════════════════════════════════════════════════
+//  Feedback
+// ═══════════════════════════════════════════════════════════════════════
+function setFeedback(status, title, body) {
+    document.getElementById('feedback-box').className = 'pcard feedback-box ' + status;
+    const ttl = document.getElementById('feedback-title');
+    ttl.className   = 'feedback-title ' + (status || 'neutral');
+    ttl.textContent = title;
+    document.getElementById('feedback-body').textContent = body;
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+//  Puzzle Fetching (Direct Load)
+// ═══════════════════════════════════════════════════════════════════════
+function loadNextPuzzle() {
+    if (isLoadingPuzzle) return;
+    isLoadingPuzzle = true;
+
+    setFeedback('', 'neutral', 'Loading next puzzle…');
+    document.getElementById('turn-banner').textContent = 'Loading...';
+
+    const isRated = document.getElementById('tog-rated').checked;
+    const rating  = targetRating === 'auto' ? myRating : targetRating;
+    const theme   = document.getElementById('theme-select').value || '';
+    const exclude = seenIds.slice(-300).join(',');
+
+    let url = `/get_puzzle?rating=${rating}&count=1&streak=${isRated ? 1 : 0}`;
+    if (theme)   url += `&theme=${encodeURIComponent(theme)}`;
+    if (exclude) url += `&exclude=${encodeURIComponent(exclude)}`;
+
+    fetch(url)
+        .then(r => r.json())
+        .then(data => {
+            isLoadingPuzzle = false;
+            if (data.puzzles && data.puzzles.length > 0) {
+                puzzle = data.puzzles[0];
+                seenIds.push(puzzle.puzzle_id);
+                initPuzzle();
+            } else if (data.error) {
+                setFeedback('wrong', 'Error', data.error);
+            } else {
+                setFeedback('wrong', 'Error', 'No puzzles found.');
+            }
+        })
+        .catch(e => {
+            isLoadingPuzzle = false;
+            setFeedback('wrong', 'Network error', e.message);
+        });
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+//  Puzzle initialisation
+// ═══════════════════════════════════════════════════════════════════════
+function initPuzzle() {
+    // Edge Case Lock: Snapshot the rated status the moment the puzzle starts
+    puzzleIsRated = document.getElementById('tog-rated').checked;
+
+    solutionIdx = 0;
+    solved      = false;
+    failed      = false;
+    hintsUsedCount   = 0;
+    currentHintLevel = 0; // Reset hint level for new puzzle
+    selectedSquare = null;
+    validMovesForPiece = [];
+    isAnimating = false;
+    pendingPromo = null;
+
+    // Reset analysis mode automatically
+    analysisMode = false;
+    document.getElementById('eval-wrap').style.display = 'none';
+    document.getElementById('btn-analyse').classList.remove('active-btn');
+    document.getElementById('btn-undo').style.display = 'none';
+    document.getElementById('eval-mobile-bar-puzzle').style.display = 'none';
+    document.getElementById('puzzle-move-log-wrap').style.display = 'none';
+    const pmlScroll = document.getElementById('puzzle-move-log-scroll');
+    if (pmlScroll) pmlScroll.innerHTML = '';
+
+    clearHighlights();
+    clearTrail();
+    setFeedback('', 'neutral', 'Find the best move for ' + (game.turn() === 'w' ? 'White' : 'Black') + '.');
+
+    // Buttons
+    document.getElementById('btn-hint').style.display     = 'inline-flex';
+    document.getElementById('btn-retry').style.display    = 'none';
+    document.getElementById('btn-analyse').style.display  = 'none';
+    document.getElementById('btn-next').style.display     = 'none';
+
+    game = new Chess(puzzle.fen);
+
+    // Player colour = opposite of whose turn it is now (first move is opponent's)
+    playerColor = (game.turn() === 'w') ? 'black' : 'white';
+
+    const cfg = {
+        draggable:   false, // Click-to-move
+        position:    puzzle.fen,
+        orientation: playerColor,
+        pieceTheme:  '/Chess_AI/images/{piece}.png',
+    };
+    if (board) board.destroy();
+    board = Chessboard('board', cfg);
+
+    updatePuzzleInfo();
+    updateTurnBanner();
+
+    // Play opponent's setup move
+    isAnimating = true;
+    setTimeout(() => {
+        playMove(puzzle.moves[0], 'last-move-from', 'last-move-to');
+        solutionIdx = 1;
+        setFeedback('', 'neutral', 'Find the best move for ' + (playerColor === 'white' ? 'White ♔' : 'Black ♚') + '.');
+        updateTurnBanner();
+        startTimer();
+        isAnimating = false;
+    }, 500);
+}
+
+function updateTurnBanner() {
+    const banner = document.getElementById('turn-banner');
+    banner.style.cssText = '';
+    if (solved) {
+        banner.textContent = '✓ Puzzle Solved!';
+        banner.className   = 'turn-banner solved-turn';
+        return;
+    }
+    if (game.turn() === 'w') {
+        banner.textContent = '♔ White to move';
+        banner.className   = 'turn-banner white-turn';
+    } else {
+        banner.textContent = '♚ Black to move';
+        banner.className   = 'turn-banner black-turn';
+    }
+}
+
+function updatePuzzleInfo() {
+    document.getElementById('info-rating').textContent  = puzzle.rating;
+
+    const wrap = document.getElementById('themes-wrap');
+    wrap.innerHTML = '';
+    (puzzle.themes || '').split(' ').filter(Boolean).forEach(t => {
+        const chip = document.createElement('span');
+        chip.className   = 'theme-chip';
+        chip.textContent = t.replace(/([A-Z])/g, ' $1').trim().toLowerCase();
+        wrap.appendChild(chip);
+    });
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+//  Click-To-Move & Inline Contextual Promotion
+// ═══════════════════════════════════════════════════════════════════════
+$(document).on('click', '.square-55d63', function () { onSquareClick($(this).attr('data-square')); });
+
+function onSquareClick(square) {
+    if (isAnimating) return; // Prevent double clicks during snapbacks or opponent moves
+    if ((solved || failed || !puzzle) && !analysisMode) return;
+    if (game.turn() !== playerColor[0] && !analysisMode) return;
+
+    if (selectedSquare === square) {
+        deselectPiece();
+        return;
+    }
+
+    if (selectedSquare) {
+        const moveObj = validMovesForPiece.find(m => m.to === square);
+
+        if (moveObj) {
+            // It's a valid move. Intercept it if it involves a pawn reaching the end rank.
+            const piece = game.get(selectedSquare);
+            const isPromo = piece && piece.type === 'p' && (square[1] === '1' || square[1] === '8');
+
+            if (isPromo) {
+                // Pause execution and show the custom inline popup
+                pendingPromo = { source: selectedSquare, target: square, isAnalysis: analysisMode };
+                showInlinePromotion(piece.color, square);
+                return; // Execution stops here. The popup handles the rest.
+            } else {
+                // Standard non-promotion move
+                if (analysisMode) {
+                    finalizeAnalysisMove(selectedSquare, square, 'q');
+                } else {
+                    executeUserMove(selectedSquare, square, 'q');
+                }
+                return;
+            }
+        }
+
+        // If clicking another valid piece
+        const piece = game.get(square);
+        if (piece && (analysisMode || piece.color === playerColor[0])) {
+            selectPiece(square);
+        } else {
+            deselectPiece();
+        }
+    } else {
+        const piece = game.get(square);
+        if (piece && (analysisMode || piece.color === playerColor[0])) {
+            selectPiece(square);
+        }
+    }
+}
+
+function selectPiece(square) {
+    deselectPiece();
+    selectedSquare = square;
+    validMovesForPiece = game.moves({ square: square, verbose: true });
+
+    if (validMovesForPiece.length > 0) {
+        const sqEl = document.querySelector(`.square-${square}`);
+        if(sqEl) sqEl.classList.add('selected-square');
+        validMovesForPiece.forEach(m => {
+            const trgEl = document.querySelector(`.square-${m.to}`);
+            if(trgEl) trgEl.classList.add('legal-highlight');
+        });
+    } else {
+        selectedSquare = null;
+    }
+}
+
+function deselectPiece() {
+    selectedSquare = null;
+    validMovesForPiece = [];
+    clearSelectionHighlights();
+}
+
+function showInlinePromotion(color, targetSquare) {
+    const backdrop = document.getElementById('promo-backdrop');
+    const container = document.getElementById('inline-promo');
+    container.innerHTML = '';
+
+    const pieces = ['q', 'n', 'r', 'b'];
+    pieces.forEach(p => {
+        const div = document.createElement('div');
+        div.className = 'inline-promo-piece';
+        div.onclick = (e) => {
+            e.stopPropagation();
+            submitPromotion(p);
+        };
+        const img = document.createElement('img');
+        img.src = `/Chess_AI/images/${color}${p.toUpperCase()}.png`;
+        div.appendChild(img);
+        container.appendChild(div);
+    });
+
+    const sqEl = document.querySelector(`.square-${targetSquare}`);
+    if (sqEl) {
+        const rect = sqEl.getBoundingClientRect();
+
+        // Hide temporarily and disable animation to get dimensions cleanly
+        container.style.visibility = 'hidden';
+        container.style.animation = 'none';
+        container.style.display = 'flex';
+        // Ensure standard piece order is preserved!
+        container.style.flexDirection = 'row';
+
+        const contRect = container.getBoundingClientRect();
+
+        // FIX: Provide a safe fallback width.
+        // If the DOM hasn't fully painted the images yet, contRect.width might fail.
+        const safeWidth = contRect.width > 150 ? contRect.width : 220;
+        const safeHeight = contRect.height > 40 ? contRect.height : 60;
+
+        // Restore visibility and animation
+        container.style.visibility = 'visible';
+        container.style.animation = '';
+
+        let top = rect.top - safeHeight - 8;
+
+        const vWidth = document.documentElement.clientWidth || window.innerWidth;
+        const vHeight = document.documentElement.clientHeight || window.innerHeight;
+
+        let left;
+        if (vWidth <= 900) {
+            // Mobile fix: Determine physical placement
+            const isPhysicallyRight = (rect.left + rect.width / 2) > (vWidth / 2);
+
+            if (isPhysicallyRight) {
+                // Align right edge of popup to right edge of square (pushes it inward to the left)
+                left = rect.right - safeWidth;
+            } else {
+                // Align left edge of popup to left edge of square (pushes it inward to the right)
+                left = rect.left;
+            }
+        } else {
+            // Desktop: Retain exact original logic
+            const file = targetSquare[0];
+            const isRightSide = ['e', 'f', 'g', 'h'].includes(file);
+            left = isRightSide ? (rect.right - safeWidth) : rect.left;
+        }
+
+        // --- STRICT BOUNDARY CLAMPS ---
+        // Guarantees the popup never bleeds off the left or right edge of the screen
+        if (left + safeWidth > vWidth - 10) {
+            left = vWidth - safeWidth - 10;
+        }
+        if (left < 10) {
+            left = 10;
+        }
+
+        // Vertical boundary clamp
+        if (top < 10) top = rect.bottom + 8;
+        if (top + safeHeight > vHeight - 10) top = vHeight - safeHeight - 10;
+
+        container.style.top = top + 'px';
+        container.style.left = left + 'px';
+    } else {
+        container.style.display = 'flex';
+        container.style.flexDirection = 'row';
+        container.style.top = '50%';
+        container.style.left = '50%';
+        container.style.transform = 'translate(-50%, -50%)';
+    }
+    backdrop.style.display = 'block';
+}
+
+function cancelPromotion() {
+    document.getElementById('promo-backdrop').style.display = 'none';
+    document.getElementById('inline-promo').style.display = 'none';
+    document.getElementById('inline-promo').style.transform = ''; // Reset fallback transform
+    pendingPromo = null;
+    deselectPiece();
+}
+
+function submitPromotion(promoPiece) {
+    document.getElementById('promo-backdrop').style.display = 'none';
+    document.getElementById('inline-promo').style.display = 'none';
+    document.getElementById('inline-promo').style.transform = '';
+
+    if (!pendingPromo) return;
+
+    const { source, target, isAnalysis } = pendingPromo;
+    pendingPromo = null;
+
+    if (isAnalysis) {
+        finalizeAnalysisMove(source, target, promoPiece);
+    } else {
+        executeUserMove(source, target, promoPiece);
+    }
+}
+
+function finalizeAnalysisMove(source, target, promo) {
+    const move = game.move({ from: source, to: target, promotion: promo });
+    if (move) {
+        board.position(game.fen(), true);
+        clearHighlights();
+        hl(source, target, 'last-move-from', 'last-move-to');
+        updateCheckHighlight(game);
+        deselectPiece();
+        buildPuzzleMoveLog();
+        fetchEval();
+    }
+}
+
+// ── Standard Puzzle Move Execution ──
+function executeUserMove(source, target, promo) {
+    deselectPiece();
+
+    const expectedUCI = puzzle.moves[solutionIdx];
+    if (!expectedUCI) return;
+
+    const expFrom  = expectedUCI.slice(0, 2);
+    const expTo    = expectedUCI.slice(2, 4);
+    const expPromo = expectedUCI.length === 5 ? expectedUCI[4] : 'q';
+
+    const move = game.move({ from: source, to: target, promotion: promo });
+    if (!move) return;
+
+    // Animate the user's piece natively
+    board.position(game.fen(), true);
+
+    // Check if the move is absolutely perfectly matching the puzzle (including underpromotions!)
+    if (source === expFrom && target === expTo && promo === expPromo) {
+        // ── CORRECT ──────────────────────────────────────────────────
+        isAnimating = true;
+        currentHintLevel = 0; // Reset hint level on correct move
+        clearHighlights();
+        hl(source, target, 'correct-from', 'correct-to');
+        updateCheckHighlight(game);
+        addTrail(move.san, 'correct-move');
+        solutionIdx++;
+        updateTurnBanner();
+
+        if (solutionIdx >= puzzle.moves.length) {
+            onPuzzleSolved();
+            isAnimating = false;
+        } else {
+            setFeedback('correct', 'Correct!', 'Keep going…');
+            setTimeout(() => {
+                const replyUCI = puzzle.moves[solutionIdx];
+                const replyMove = playMove(replyUCI, 'last-move-from', 'last-move-to');
+                if (replyMove) addTrail(replyMove.san, 'reply-move');
+                solutionIdx++;
+                updateTurnBanner();
+                if (solutionIdx >= puzzle.moves.length) {
+                    onPuzzleSolved();
+                } else {
+                    setFeedback('', 'neutral', 'Find the next best move.');
+                }
+                isAnimating = false;
+            }, 500);
+        }
+    } else {
+        // ── WRONG ────────────────────────────────────────────────────
+        isAnimating = true;
+        setTimeout(() => {
+            game.undo();
+            board.position(game.fen(), true);
+            clearHighlights();
+            hl(source, target, 'wrong-from', 'wrong-to');
+            updateCheckHighlight(game);
+            addTrail(source + '-' + target, 'wrong-move');
+            failed = true;
+
+            setFeedback('wrong', 'Not the best move', 'There is a stronger continuation. Try again or Analyse the position.');
+            document.getElementById('btn-retry').style.display    = 'inline-flex';
+            document.getElementById('btn-analyse').style.display  = 'inline-flex';
+            document.getElementById('btn-next').style.display     = 'inline-flex';
+
+            submitResult(false);
+            isAnimating = false;
+        }, 300); // Tiny delay so they see the piece land before snapping back
+    }
+}
+
+function playMove(uci, cls1, cls2) {
+    if (!uci) return null;
+    const from  = uci.slice(0, 2);
+    const to    = uci.slice(2, 4);
+    const promo = uci.length === 5 ? uci[4] : 'q';
+    const move  = game.move({ from, to, promotion: promo });
+    if (move) {
+        board.position(game.fen(), true);
+        clearHighlights();
+        hl(from, to, cls1 || 'last-move-from', cls2 || 'last-move-to');
+        updateCheckHighlight(game);
+    }
+    return move;
+}
+
+
+// ═══════════════════════════════════════════════════════════════════════
+//  Solved & Server submit
+// ═══════════════════════════════════════════════════════════════════════
+function onPuzzleSolved() {
+    solved = true;
+    stopTimer();
+    clearHighlights();
+    setFeedback('solved', '✓ Brilliant!', 'All moves found correctly!');
+    updateTurnBanner();
+
+    document.getElementById('btn-hint').style.display     = 'none';
+    document.getElementById('btn-retry').style.display    = 'none';
+    document.getElementById('btn-analyse').style.display  = 'inline-flex';
+    document.getElementById('btn-next').style.display     = 'inline-flex';
+
+    submitResult(true);
+}
+
+function submitResult(didSolve) {
+    // Prevent submitting the same puzzle multiple times to stop farming/tanking
+    if (submittedPuzzles.has(puzzle.puzzle_id)) return;
+    submittedPuzzles.add(puzzle.puzzle_id);
+
+    fetch('/puzzle_solved', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({
+            puzzle_rating: puzzle.rating,
+            current_rating: myRating,
+            solved:        didSolve,
+            time_seconds:  timerSecs,
+            hints_used:    hintsUsedCount,
+            rated:         puzzleIsRated  // Use the locked status!
+        })
+    })
+    .then(r => r.json())
+    .then(d => {
+        animateRating(d.new_rating, d.delta);
+        updateStreak(d.streak);
+
+        // PERSISTENCE: Save to localStorage so it survives server restarts/space sleep
+        try {
+            localStorage.setItem('ghost_puzzle_rating', d.new_rating);
+        } catch(e) {}
+
+        if (didSolve) {
+            if (document.getElementById('tog-auto').checked) {
+                setTimeout(() => { loadNextPuzzle(); }, 1200);
+            }
+        }
+    })
+    .catch(() => {});
+}
+
+function updateStreak(streak) {
+    const badge = document.getElementById('streak-badge');
+    document.getElementById('streak-count').textContent = streak;
+
+    // Only show streak if we are in rated mode and have a streak of 2+
+    // Check live toggle for visual UI
+    if (streak >= 2 && document.getElementById('tog-rated').checked) {
+        badge.classList.remove('hidden');
+    } else {
+        badge.classList.add('hidden');
+    }
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+//  Analysis & Controls
+// ═══════════════════════════════════════════════════════════════════════
+function toggleAnalysis() {
+    analysisMode = !analysisMode;
+    if (analysisMode) {
+        document.getElementById('eval-wrap').style.display = 'flex';
+        document.getElementById('btn-undo').style.display  = 'inline-flex';
+        document.getElementById('btn-analyse').classList.add('active-btn');
+        // Show mobile horizontal eval bar and move log
+        document.getElementById('eval-mobile-bar-puzzle').style.display = 'flex';
+        document.getElementById('puzzle-move-log-wrap').style.display = 'block';
+        buildPuzzleMoveLog();
+        fetchEval();
+    } else {
+        document.getElementById('eval-wrap').style.display = 'none';
+        document.getElementById('btn-undo').style.display  = 'none';
+        document.getElementById('btn-analyse').classList.remove('active-btn');
+        document.getElementById('eval-mobile-bar-puzzle').style.display = 'none';
+        document.getElementById('puzzle-move-log-wrap').style.display = 'none';
+    }
+}
+
+function fetchEval() {
+    fetch('/evaluate_fen', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({fen: game.fen()})
+    }).then(r => r.json()).then(data => {
+        if(!data.error) updateEvalBar(data.cp, data.mate);
+    });
+}
+
+function updateEvalBar(cp, mate) {
+    const black = document.getElementById('eval-black');
+    const white = document.getElementById('eval-white');
+    const label = document.getElementById('eval-score-label');
+
+    let whiteFrac = 0.5, scoreText = '0.0';
+
+    if (mate !== null && mate !== undefined) {
+        whiteFrac = cp > 0 ? 0.97 : 0.03;
+        scoreText = cp > 0 ? 'M' + Math.abs(mate) : '-M' + Math.abs(mate);
+    } else if (cp !== null && cp !== undefined) {
+        const clamped = Math.max(-800, Math.min(800, cp));
+        whiteFrac = (clamped + 800) / 1600;
+        scoreText = cp >= 0 ? '+' + (cp / 100).toFixed(1) : (cp / 100).toFixed(1);
+    }
+
+    // Vertical bar (desktop)
+    if (black) black.style.flex  = (1 - whiteFrac).toString();
+    if (white) white.style.flex  = whiteFrac.toString();
+    if (label) label.textContent = scoreText;
+
+    // Horizontal bar (mobile)
+    const mBlack = document.getElementById('puzzle-eval-black-mob');
+    const mWhite = document.getElementById('puzzle-eval-white-mob');
+    const mLabel = document.getElementById('puzzle-eval-score-mob');
+    if (mBlack) { mBlack.style.width = Math.round((1 - whiteFrac) * 100) + '%'; mBlack.style.flex = 'none'; }
+    if (mWhite) { mWhite.style.flex = '1'; }
+    if (mLabel) mLabel.textContent = scoreText;
+}
+
+function undoMove() {
+    if (!analysisMode) return;
+    game.undo();
+    board.position(game.fen(), true);
+    clearHighlights();
+    updateCheckHighlight(game);
+    buildPuzzleMoveLog();
+    fetchEval();
+}
+
+// ── Puzzle Analysis Move Log ──────────────────────────────────────────
+function buildPuzzleMoveLog() {
+    const scroll = document.getElementById('puzzle-move-log-scroll');
+    if (!scroll) return;
+    const history = game.history({ verbose: false });
+    if (history.length === 0) {
+        scroll.innerHTML = '<div style="padding:10px 14px;font-size:12px;color:var(--text-dim);">No moves yet.</div>';
+        return;
+    }
+    let html = '';
+    for (let i = 0; i < history.length; i += 2) {
+        const num = Math.floor(i / 2) + 1;
+        const w = history[i]   || '';
+        const b = history[i+1] || '';
+        html += `<div class="pml-row">
+            <div class="pml-num">${num}.</div>
+            <div class="pml-cell">${w}</div>
+            <div class="pml-cell">${b}</div>
+        </div>`;
+    }
+    scroll.innerHTML = html;
+    scroll.scrollTop = scroll.scrollHeight;
+}
+
+function showHint() {
+    if (solved || failed || !puzzle) return;
+
+    const uci  = puzzle.moves[solutionIdx];
+    if (!uci) return;
+
+    if (currentHintLevel === 0) {
+        // Level 1 Hint: Show piece only
+        hintsUsedCount++;
+        currentHintLevel = 1;
+        clearHighlights();
+        hl(uci.slice(0,2), uci.slice(0,2), 'hint-square');
+        setFeedback('', 'neutral', `Hint: Move the piece on ${uci.slice(0,2).toUpperCase()}`);
+    } else if (currentHintLevel === 1) {
+        // Level 2 Hint: Show full move
+        hintsUsedCount++;
+        currentHintLevel = 2;
+        clearHighlights();
+        hl(uci.slice(0,2), uci.slice(2,4), 'hint-square');
+        setFeedback('', 'neutral', `Hint: Move ${uci.slice(0,2).toUpperCase()} → ${uci.slice(2,4).toUpperCase()}`);
+    }
+}
+
+function flipBoard() { if (board) board.flip(); }
+
+function replayPuzzle() {
+    failed      = false;
+    solved      = false;
+    hintsUsedCount = 0;
+    currentHintLevel = 0; // Reset hint level
+    solutionIdx = 0;
+    analysisMode = false;
+
+    // Do NOT reset submittedPuzzles here so they don't farm points by retrying!
+
+    document.getElementById('btn-retry').style.display    = 'none';
+    document.getElementById('btn-analyse').style.display  = 'none';
+    document.getElementById('btn-undo').style.display     = 'none';
+    document.getElementById('btn-next').style.display     = 'none';
+    document.getElementById('btn-hint').style.display     = 'inline-flex';
+    document.getElementById('btn-analyse').classList.remove('active-btn');
+    document.getElementById('eval-wrap').style.display    = 'none';
+
+    // Hard reset back to puzzle start
+    initPuzzle();
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+//  Settings wiring
+// ═══════════════════════════════════════════════════════════════════════
+document.querySelectorAll('#rating-grid .r-chip').forEach(chip => {
+    chip.addEventListener('click', function () {
+        document.querySelectorAll('#rating-grid .r-chip').forEach(c => c.classList.remove('active'));
+        this.classList.add('active');
+        targetRating = this.dataset.rating === 'auto' ? 'auto' : parseInt(this.dataset.rating);
+        loadNextPuzzle();
+    });
+});
+
+document.getElementById('theme-select').addEventListener('change', function () {
+    loadNextPuzzle();
+});
+
+document.getElementById('tog-rated').addEventListener('change', (e) => {
+    if(!e.target.checked) {
+        document.getElementById('rating-delta').classList.add('hidden');
+    }
+    updateStreak(document.getElementById('streak-count').textContent);
+    loadNextPuzzle();
+});
+
+fetch('/puzzle_themes')
+    .then(r => r.json())
+    .then(data => {
+        if (!data.themes) return;
+        const sel = document.getElementById('theme-select');
+        const popular = [
+            'fork','pin','skewer','discoveredAttack','doubleCheck',
+            'backRankMate','mateIn1','mateIn2','mateIn3','endgame',
+            'sacrifice','promotion','deflection','interference'
+        ];
+        const sorted = [
+            ...popular.filter(t => data.themes.includes(t)),
+            ...data.themes.filter(t => !popular.includes(t))
+        ];
+        sorted.forEach(t => {
+            const opt       = document.createElement('option');
+            opt.value       = t;
+            opt.textContent = t.replace(/([A-Z])/g, ' $1').trim();
+            sel.appendChild(opt);
+        });
+    })
+    .catch(() => {});
+
+// ═══════════════════════════════════════════════════════════════════════
+//  Boot
+// ═══════════════════════════════════════════════════════════════════════
+$(document).ready(function () {
+    // Sync the UI with the persisted rating
+    document.getElementById('my-rating').textContent = myRating;
+    
+    // Instantly trigger load to fetch the first puzzle cleanly
+    loadNextPuzzle();
+});
+</script>
+</body>
+</html>

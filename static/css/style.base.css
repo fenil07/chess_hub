@@ -1,0 +1,403 @@
+/* ============================================================
+   style.base.css
+   Shared design tokens, resets, and component styles.
+   Loaded on ALL screen sizes by both game.html and puzzle.html.
+   ============================================================ */
+
+@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=Source+Code+Pro:wght@400;500&display=swap');
+
+/* ── Design tokens ────────────────────────────────────────────────────── */
+:root {
+    --bg:        #0f0f0f;
+    --panel:     #1c1c1c;
+    --panel2:    #242424;
+    --border:    #333;
+    --gold:      #c9a84c;
+    --gold-dim:  #8a6e2e;
+    --danger:    #8b0000;
+    --danger-h:  #b00000;
+    --text:      #e0e0e0;
+    --text-dim:  #888;
+    --ai-color:  #c9a84c;
+    --white-move:#d4d4d4;
+    --black-move:#a0a0a0;
+    --radius:    10px;
+    --shadow:    0 8px 32px rgba(0,0,0,0.6);
+    /* Move classification colours (shared with analysis page) */
+    --brilliant: #1baca6;
+    --great:     #5c8bb0;
+    --best:      #81b64c;
+    --good:      #95bb4a;
+    --inaccuracy:#f3ae16;
+    --mistake:   #f78d1f;
+    --blunder:   #fa412d;
+}
+
+/* ── Reset ───────────────────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html { height: 100%; }
+
+/* ── Background grid texture (shared) ───────────────────────────────── */
+body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+        linear-gradient(rgba(201,168,76,0.02) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(201,168,76,0.02) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+    z-index: 0;
+}
+
+/* ── Body base (layout & sizing live in desktop/mobile files) ────────── */
+body {
+    background-color: var(--bg);
+    font-family: 'Source Code Pro', monospace;
+    color: var(--text);
+}
+
+/* ── Main wrapper ────────────────────────────────────────────────────── */
+.main-wrapper {
+    position: relative;
+    z-index: 1;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+}
+
+/* ── Player label ────────────────────────────────────────────────────── */
+.player-label {
+    font-family: 'Cinzel', serif;
+    color: var(--text-dim);
+    font-weight: 600;
+    font-size: 12px;
+    letter-spacing: 1.5px;
+    padding: 4px 0;
+    text-transform: uppercase;
+    width: 100%;
+    text-align: center;
+}
+
+/* ── Board square highlights ─────────────────────────────────────────── */
+.selected-square {
+    background-color: rgba(255,255,255,0.08) !important;
+    box-shadow: inset 0 0 10px 3px var(--gold) !important;
+}
+.legal-highlight {
+    background-color: rgba(201,168,76,0.12) !important;
+    box-shadow: inset 0 0 0 3px rgba(201,168,76,0.35) !important;
+}
+.check-square {
+    background-color: rgba(255,40,40,0.5) !important;
+    box-shadow: inset 0 0 16px 6px rgba(139,0,0,0.8) !important;
+}
+
+/* ── Board footer ────────────────────────────────────────────────────── */
+.board-footer {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+}
+
+.button-row {
+    display: flex;
+    gap: 10px;
+    margin-top: 6px;
+    justify-content: center;
+    flex-wrap: nowrap;
+}
+
+/* ── Buttons ─────────────────────────────────────────────────────────── */
+.btn-game {
+    padding: 8px 18px;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-family: 'Source Code Pro', monospace;
+    font-weight: 600;
+    font-size: 12px;
+    letter-spacing: 0.5px;
+    color: white;
+    transition: background 0.18s, transform 0.1s, box-shadow 0.18s;
+    white-space: nowrap;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+}
+.btn-game:active { transform: scale(0.96); }
+
+.btn-secondary {
+    background: #2e2e2e;
+    border: 1px solid #444;
+}
+.btn-secondary:hover {
+    background: #3a3a3a;
+    border-color: var(--gold-dim);
+}
+
+.btn-danger {
+    background: var(--danger) !important;
+    border: 1px solid #a00000;
+}
+.btn-danger:hover {
+    background: var(--danger-h) !important;
+    box-shadow: 0 0 10px rgba(180,0,0,0.4);
+}
+
+.btn-download {
+    background: #1a4a1a !important;
+    border: 1px solid #2e6e2e !important;
+    color: #7ec87e !important;
+}
+.btn-download:hover {
+    background: #225522 !important;
+    box-shadow: 0 0 10px rgba(80,160,80,0.25);
+}
+
+.btn-analyse {
+    background: #1a2e4a !important;
+    border: 1px solid #2e5080 !important;
+    color: #7eb0d4 !important;
+}
+.btn-analyse:hover {
+    background: #1e3a5f !important;
+    box-shadow: 0 0 10px rgba(80,130,200,0.25);
+}
+
+/* ── Chess Clock ─────────────────────────────────────────────────────── */
+#clock-section {
+    display: none;   /* shown by JS when time control is set */
+    width: 100%;
+    justify-content: space-between;
+    align-items: center;
+    gap: 10px;
+    margin: 4px 0 2px;
+}
+
+.clock-box {
+    flex: 1;
+    background: var(--panel2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 5px 10px;
+    text-align: center;
+    font-family: 'Source Code Pro', monospace;
+    font-size: 16px;
+    font-weight: 600;
+    letter-spacing: 2px;
+    color: var(--text-dim);
+    transition: background 0.2s, color 0.2s, border-color 0.2s;
+}
+.clock-box.clock-active {
+    background: #1e1a0e;
+    border-color: var(--gold-dim);
+    color: var(--gold);
+}
+.clock-box.clock-low {
+    color: #e04040 !important;
+    border-color: #8b0000 !important;
+    animation: clock-pulse 0.6s infinite;
+}
+
+@keyframes clock-pulse {
+    0%, 100% { opacity: 1; }
+    50%       { opacity: 0.65; }
+}
+
+.clock-label {
+    font-family: 'Cinzel', serif;
+    font-size: 9px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    margin-bottom: 2px;
+}
+
+/* ── Move log heading ────────────────────────────────────────────────── */
+.log-heading {
+    font-family: 'Cinzel', serif;
+    color: var(--gold);
+    font-size: 14px;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    padding: 0 0 8px 0;
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+}
+
+/* ── Move log wrapper ────────────────────────────────────────────────── */
+.move-log-wrapper {
+    flex: 1;
+    background: #141414;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    margin-top: 10px;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+}
+
+.move-log-container {
+    flex: 1;
+    overflow-y: auto;
+    padding: 10px 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    scroll-behavior: smooth;
+}
+
+.move-log-container::-webkit-scrollbar { width: 5px; }
+.move-log-container::-webkit-scrollbar-track { background: transparent; }
+.move-log-container::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+.move-log-container::-webkit-scrollbar-thumb:hover { background: var(--gold-dim); }
+
+/* ── Move rows ───────────────────────────────────────────────────────── */
+.move-row {
+    display: grid;
+    grid-template-columns: 36px 1fr 1fr;
+    gap: 6px;
+    align-items: center;
+    padding: 4px 6px;
+    border-radius: 5px;
+    transition: background 0.1s;
+}
+.move-row:hover { background: rgba(255,255,255,0.04); }
+
+.move-num-label {
+    font-family: 'Source Code Pro', monospace;
+    font-size: 14px;
+    color: var(--gold-dim);
+    text-align: right;
+    padding-right: 4px;
+    flex-shrink: 0;
+}
+
+.move-half {
+    font-family: 'Source Code Pro', monospace;
+    font-size: 16px;
+    padding: 4px 10px;
+    border-radius: 4px;
+    min-height: 28px;
+    display: inline-block;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    cursor: pointer;
+    transition: background 0.12s;
+}
+.move-half[data-fen-idx]:hover {
+    background: rgba(201,168,76,0.10);
+    color: var(--gold);
+}
+.move-half.move-replay-active {
+    background: rgba(201,168,76,0.22) !important;
+    color: var(--gold) !important;
+    box-shadow: inset 0 0 0 1px rgba(201,168,76,0.4);
+}
+
+.move-white { color: var(--white-move); }
+.move-black { color: var(--black-move); }
+.move-black-placeholder { color: transparent; }
+
+.move-half.move-ai {
+    color: var(--ai-color);
+    background: rgba(201,168,76,0.07);
+    border: 1px solid rgba(201,168,76,0.15);
+}
+
+/* ── Replay banner ───────────────────────────────────────────────────── */
+.replay-banner {
+    display: none;
+    width: 100%;
+    background: rgba(201,168,76,0.12);
+    border: 1px solid var(--gold-dim);
+    border-radius: 6px;
+    padding: 5px 10px;
+    font-size: 11px;
+    color: var(--gold);
+    letter-spacing: 0.5px;
+    text-align: center;
+    margin-bottom: 4px;
+    cursor: pointer;
+}
+.replay-banner span { text-decoration: underline; color: var(--text-dim); }
+
+/* ── Modals ──────────────────────────────────────────────────────────── */
+.custom-modal {
+    display: none;
+    position: fixed;
+    z-index: 9999;
+    inset: 0;
+    background: rgba(0,0,0,0.82);
+    align-items: center;
+    justify-content: center;
+    backdrop-filter: blur(4px);
+}
+
+.modal-content {
+    background: var(--panel2);
+    border: 1px solid var(--gold-dim);
+    border-radius: 14px;
+    padding: 36px 40px;
+    width: 360px;
+    max-width: 90vw;
+    text-align: center;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.7);
+    animation: modal-in 0.2s ease;
+}
+
+@keyframes modal-in {
+    from { opacity: 0; transform: scale(0.94) translateY(8px); }
+    to   { opacity: 1; transform: scale(1)    translateY(0); }
+}
+
+.modal-content h3 {
+    font-family: 'Cinzel', serif;
+    color: var(--gold);
+    font-size: 20px;
+    letter-spacing: 2px;
+    margin-bottom: 12px;
+}
+.modal-content p {
+    color: var(--text-dim);
+    font-size: 14px;
+    line-height: 1.6;
+    margin-bottom: 4px;
+}
+
+.modal-buttons {
+    display: flex;
+    justify-content: center;
+    gap: 14px;
+    margin-top: 24px;
+    flex-wrap: wrap;
+}
+
+#result-modal .modal-buttons {
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+/* ── Thinking indicator ──────────────────────────────────────────────── */
+.thinking-tag {
+    display: inline-block;
+    font-size: 11px;
+    color: var(--gold);
+    font-style: italic;
+    margin-left: 6px;
+    animation: blink-think 0.9s infinite;
+}
+
+@keyframes blink-think {
+    0%, 100% { opacity: 1; }
+    50%       { opacity: 0.2; }
+}

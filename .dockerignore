@@ -1,0 +1,9 @@
+__pycache__/
+*.pyc
+*.log
+.git
+.venv/
+.idea/
+render.yaml*
+render_build.sh*
+Procfile*

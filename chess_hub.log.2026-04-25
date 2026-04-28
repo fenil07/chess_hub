@@ -1,0 +1,53 @@
+2026-04-25 13:41:21,642 - root - INFO - [OK] Num classes: 1884
+2026-04-25 13:41:21,676 - root - INFO - [OK] PyTorch Model Loaded from: C:\Users\ASUS\PycharmProjects\chess_hub\Chess_AI\model\CHESS_MODEL.pth
+2026-04-25 13:41:21,688 - root - INFO - [OK] Ghost Predictor -- 4,096 move classes  |  device: cpu
+2026-04-25 13:41:21,743 - root - INFO - [OK] GhostChessNet loaded from: C:\Users\ASUS\PycharmProjects\chess_hub\Chess_AI\model\ghost_chess_best.pth
+2026-04-25 13:41:21,762 - root - INFO - NNUE loaded and initialized!
+2026-04-25 13:43:56,147 - root - INFO - [OK] Num classes: 1884
+2026-04-25 13:43:56,180 - root - INFO - [OK] PyTorch Model Loaded from: C:\Users\ASUS\PycharmProjects\chess_hub\Chess_AI\model\CHESS_MODEL.pth
+2026-04-25 13:43:56,186 - root - INFO - [OK] Ghost Predictor -- 4,096 move classes  |  device: cpu
+2026-04-25 13:43:56,261 - root - INFO - [OK] GhostChessNet loaded from: C:\Users\ASUS\PycharmProjects\chess_hub\Chess_AI\model\ghost_chess_best.pth
+2026-04-25 13:43:56,285 - root - INFO - NNUE loaded and initialized!
+2026-04-25 13:43:56,333 - werkzeug - INFO - [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on http://127.0.0.1:5000
+2026-04-25 13:43:56,333 - werkzeug - INFO - [33mPress CTRL+C to quit[0m
+2026-04-25 13:44:00,172 - werkzeug - INFO - 127.0.0.1 - - [25/Apr/2026 13:44:00] "GET / HTTP/1.1" 200 -
+2026-04-25 13:44:00,436 - werkzeug - INFO - 127.0.0.1 - - [25/Apr/2026 13:44:00] "GET /Chess_AI/images/wK.png HTTP/1.1" 200 -
+2026-04-25 13:44:00,439 - werkzeug - INFO - 127.0.0.1 - - [25/Apr/2026 13:44:00] "GET /Chess_AI/images/bK.png HTTP/1.1" 200 -
+2026-04-25 13:44:02,895 - werkzeug - INFO - 127.0.0.1 - - [25/Apr/2026 13:44:02] "GET /history HTTP/1.1" 200 -
+2026-04-25 13:44:05,949 - werkzeug - INFO - 127.0.0.1 - - [25/Apr/2026 13:44:05] "GET /puzzles HTTP/1.1" 200 -
+2026-04-25 13:44:06,003 - werkzeug - INFO - 127.0.0.1 - - [25/Apr/2026 13:44:06] "GET /static/css/style.css HTTP/1.1" 200 -
+2026-04-25 13:44:06,693 - werkzeug - INFO - 127.0.0.1 - - [25/Apr/2026 13:44:06] "GET /puzzle_themes HTTP/1.1" 200 -
+2026-04-25 13:44:07,163 - werkzeug - INFO - 127.0.0.1 - - [25/Apr/2026 13:44:07] "GET /get_puzzle?rating=1216&count=1&streak=1 HTTP/1.1" 200 -
+2026-04-25 13:44:07,185 - werkzeug - INFO - 127.0.0.1 - - [25/Apr/2026 13:44:07] "[36mGET /Chess_AI/images/bK.png HTTP/1.1[0m" 304 -
+2026-04-25 13:44:07,219 - werkzeug - INFO - 127.0.0.1 - - [25/Apr/2026 13:44:07] "[36mGET /Chess_AI/images/wK.png HTTP/1.1[0m" 304 -
+2026-04-25 13:44:07,226 - werkzeug - INFO - 127.0.0.1 - - [25/Apr/2026 13:44:07] "GET /Chess_AI/images/wP.png HTTP/1.1" 200 -
+2026-04-25 13:44:07,230 - werkzeug - INFO - 127.0.0.1 - - [25/Apr/2026 13:44:07] "GET /Chess_AI/images/bB.png HTTP/1.1" 200 -
+2026-04-25 13:44:07,237 - werkzeug - INFO - 127.0.0.1 - - [25/Apr/2026 13:44:07] "GET /Chess_AI/images/bR.png HTTP/1.1" 200 -
+2026-04-25 13:44:07,252 - werkzeug - INFO - 127.0.0.1 - - [25/Apr/2026 13:44:07] "GET /Chess_AI/images/bP.png HTTP/1.1" 200 -
+2026-04-25 13:44:07,264 - werkzeug - INFO - 127.0.0.1 - - [25/Apr/2026 13:44:07] "GET /Chess_AI/images/wN.png HTTP/1.1" 200 -
+2026-04-25 13:44:07,265 - werkzeug - INFO - 127.0.0.1 - - [25/Apr/2026 13:44:07] "GET /Chess_AI/images/wR.png HTTP/1.1" 200 -
+2026-04-25 13:44:07,271 - werkzeug - INFO - 127.0.0.1 - - [25/Apr/2026 13:44:07] "GET /Chess_AI/images/wQ.png HTTP/1.1" 200 -
+2026-04-25 13:44:07,273 - werkzeug - INFO - 127.0.0.1 - - [25/Apr/2026 13:44:07] "GET /Chess_AI/images/bN.png HTTP/1.1" 200 -
+2026-04-25 13:44:07,276 - werkzeug - INFO - 127.0.0.1 - - [25/Apr/2026 13:44:07] "GET /Chess_AI/images/bQ.png HTTP/1.1" 200 -
+2026-04-25 13:44:07,277 - werkzeug - INFO - 127.0.0.1 - - [25/Apr/2026 13:44:07] "GET /Chess_AI/images/wB.png HTTP/1.1" 200 -
+2026-04-25 13:44:09,630 - werkzeug - INFO - 127.0.0.1 - - [25/Apr/2026 13:44:09] "GET /get_puzzle?rating=2200&count=1&streak=1&exclude=H7d0f HTTP/1.1" 200 -
+2026-04-25 13:44:26,175 - werkzeug - INFO - 127.0.0.1 - - [25/Apr/2026 13:44:26] "POST /puzzle_solved HTTP/1.1" 200 -
+2026-04-25 13:44:42,760 - werkzeug - INFO - 127.0.0.1 - - [25/Apr/2026 13:44:42] "GET /get_puzzle?rating=2200&count=1&streak=1&exclude=H7d0f,ORZPe HTTP/1.1" 200 -
+2026-04-25 13:44:52,971 - werkzeug - INFO - 127.0.0.1 - - [25/Apr/2026 13:44:52] "POST /puzzle_solved HTTP/1.1" 200 -
+2026-04-25 13:45:10,514 - werkzeug - INFO - 127.0.0.1 - - [25/Apr/2026 13:45:10] "GET /get_puzzle?rating=2200&count=1&streak=1&exclude=H7d0f,ORZPe,p9iNf HTTP/1.1" 200 -
+2026-04-25 13:45:27,719 - werkzeug - INFO - 127.0.0.1 - - [25/Apr/2026 13:45:27] "POST /puzzle_solved HTTP/1.1" 200 -
+2026-04-25 13:45:32,677 - werkzeug - INFO - 127.0.0.1 - - [25/Apr/2026 13:45:32] "GET /get_puzzle?rating=2200&count=1&streak=1&exclude=H7d0f,ORZPe,p9iNf,6dUzM HTTP/1.1" 200 -
+2026-04-25 13:45:33,851 - werkzeug - INFO - 127.0.0.1 - - [25/Apr/2026 13:45:33] "GET /get_puzzle?rating=1216&count=1&streak=1&exclude=H7d0f,ORZPe,p9iNf,6dUzM,vjYnJ HTTP/1.1" 200 -
+2026-04-25 13:45:40,527 - werkzeug - INFO - 127.0.0.1 - - [25/Apr/2026 13:45:40] "POST /puzzle_solved HTTP/1.1" 200 -
+2026-04-25 13:45:42,016 - werkzeug - INFO - 127.0.0.1 - - [25/Apr/2026 13:45:42] "GET /get_puzzle?rating=1233&count=1&streak=1&exclude=H7d0f,ORZPe,p9iNf,6dUzM,vjYnJ,VF9qc HTTP/1.1" 200 -
+2026-04-25 13:45:46,088 - werkzeug - INFO - 127.0.0.1 - - [25/Apr/2026 13:45:46] "GET /get_puzzle?rating=800&count=1&streak=1&exclude=H7d0f,ORZPe,p9iNf,6dUzM,vjYnJ,VF9qc,TiYHh HTTP/1.1" 200 -
+2026-04-25 13:45:55,824 - werkzeug - INFO - 127.0.0.1 - - [25/Apr/2026 13:45:55] "POST /puzzle_solved HTTP/1.1" 200 -
+2026-04-25 13:45:57,306 - werkzeug - INFO - 127.0.0.1 - - [25/Apr/2026 13:45:57] "GET /get_puzzle?rating=800&count=1&streak=1&exclude=H7d0f,ORZPe,p9iNf,6dUzM,vjYnJ,VF9qc,TiYHh,6qeuh HTTP/1.1" 200 -
+2026-04-25 13:46:01,725 - werkzeug - INFO - 127.0.0.1 - - [25/Apr/2026 13:46:01] "GET /get_puzzle?rating=2200&count=1&streak=1&exclude=H7d0f,ORZPe,p9iNf,6dUzM,vjYnJ,VF9qc,TiYHh,6qeuh,4weUa HTTP/1.1" 200 -
+2026-04-25 13:46:08,082 - werkzeug - INFO - 127.0.0.1 - - [25/Apr/2026 13:46:08] "POST /puzzle_solved HTTP/1.1" 200 -
+2026-04-25 13:46:28,927 - werkzeug - INFO - 127.0.0.1 - - [25/Apr/2026 13:46:28] "GET /get_puzzle?rating=2200&count=1&streak=1&exclude=H7d0f,ORZPe,p9iNf,6dUzM,vjYnJ,VF9qc,TiYHh,6qeuh,4weUa,AGkFm HTTP/1.1" 200 -
+2026-04-25 13:46:50,944 - werkzeug - INFO - 127.0.0.1 - - [25/Apr/2026 13:46:50] "POST /puzzle_solved HTTP/1.1" 200 -
+2026-04-25 13:47:05,173 - werkzeug - INFO - 127.0.0.1 - - [25/Apr/2026 13:47:05] "GET /get_puzzle?rating=2200&count=1&streak=1&exclude=H7d0f,ORZPe,p9iNf,6dUzM,vjYnJ,VF9qc,TiYHh,6qeuh,4weUa,AGkFm,5q2ZK HTTP/1.1" 200 -
+2026-04-25 13:47:41,022 - werkzeug - INFO - 127.0.0.1 - - [25/Apr/2026 13:47:41] "POST /puzzle_solved HTTP/1.1" 200 -
+2026-04-25 13:47:42,689 - werkzeug - INFO - 127.0.0.1 - - [25/Apr/2026 13:47:42] "GET /get_puzzle?rating=2200&count=1&streak=1&exclude=H7d0f,ORZPe,p9iNf,6dUzM,vjYnJ,VF9qc,TiYHh,6qeuh,4weUa,AGkFm,5q2ZK,7lP2S HTTP/1.1" 200 -

@@ -1,0 +1,5 @@
+*.pkl filter=lfs diff=lfs merge=lfs -text
+*.duckdb filter=lfs diff=lfs merge=lfs -text
+*.pth filter=lfs diff=lfs merge=lfs -text
+*.nnue filter=lfs diff=lfs merge=lfs -text
+Chess_AI/model/move_to_int filter=lfs diff=lfs merge=lfs -text

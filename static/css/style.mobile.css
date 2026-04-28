@@ -1,0 +1,65 @@
+/* ============================================================
+   style.mobile.css
+   Layout rules for MOBILE screens (max-width: 780px).
+   Loaded via: <link media="screen and (max-width: 780px)">
+   Edit this file for mobile-specific layout bugs and tweaks.
+   ============================================================ */
+
+/* ── Body — mobile: scrollable, natural height ───────────────────────── */
+body {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    overflow: auto;
+    height: auto;
+    padding: 8px;
+}
+
+/* ── Main wrapper — mobile ───────────────────────────────────────────── */
+.main-wrapper {
+    align-items: stretch;
+    justify-content: flex-start;
+}
+
+/* ── Game layout — mobile: stack vertically ──────────────────────────── */
+.game-layout {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 12px;
+    gap: 12px;
+    height: auto;
+    width: 100%;
+    /* Keep shared panel style from base */
+    background: var(--panel);
+    border-radius: 14px;
+    border: 1px solid var(--border);
+    box-shadow: var(--shadow);
+}
+
+/* ── Board — mobile: full width square ───────────────────────────────── */
+#board {
+    width: calc(100vw - 48px) !important;
+    height: calc(100vw - 48px) !important;
+    max-width: 90vh;
+    max-height: 90vh;
+}
+
+/* ── Control panel — mobile: full width below board ──────────────────── */
+.control-panel {
+    flex: none;
+    width: 100%;
+    max-width: 100%;
+    height: auto;
+}
+
+/* ── Move log — mobile: fixed height so it doesn't push page too long ── */
+.move-log-wrapper {
+    height: 220px;
+    flex: none;
+}
+
+/* ── Clock — mobile: slightly smaller to fit narrow screens ──────────── */
+.clock-box {
+    font-size: 16px;
+}
